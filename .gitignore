@@ -1,0 +1,6 @@
+.vscode/
+.cache/
+build/
+compile_commands.json
+todo
+research
