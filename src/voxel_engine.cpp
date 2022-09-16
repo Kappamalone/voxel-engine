@@ -12,18 +12,13 @@ void VoxelEngine::run() {
   Chunk chunk = Chunk();
   uint32_t vao;
   uint32_t vbo;
-  uint32_t ibo;
 
   glCreateVertexArrays(1, &vao);
   glCreateBuffers(1, &vbo);
   glNamedBufferData(vbo, chunk.vertices_buffer.size() * 4,
                     chunk.vertices_buffer.data(), GL_STATIC_DRAW);
-  glCreateBuffers(1, &ibo);
-  glNamedBufferData(ibo, chunk.indices_buffer.size() * 4,
-                    chunk.indices_buffer.data(), GL_STATIC_DRAW);
 
-  glVertexArrayVertexBuffer(vao, 0, vbo, 0, 4);
-  glVertexArrayElementBuffer(vao, ibo);
+  glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(float) * 3);
 
   glEnableVertexArrayAttrib(vao, 0);
   glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
@@ -40,6 +35,7 @@ void VoxelEngine::run() {
   shader_program.set_uniform_matrix<UniformMSize::FOUR>(
       "projection", 1, false, glm::value_ptr(projection));
 
+  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   while (!glfwWindowShouldClose(window.get_window())) {
 
     window.imgui_new_frame();
@@ -70,12 +66,8 @@ void VoxelEngine::run() {
         "view", 1, false, glm::value_ptr(*player_camera.get_view_matrix()));
 
     shader_program.use();
-    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibo);
     glBindVertexArray(vao);
-    glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
-    glDrawElements(GL_TRIANGLES, chunk.indices_buffer.size(), GL_UNSIGNED_INT,
-                   0);
-    // glPolygonMode(GL_FRONT_AND_BACK, GL_FILL);
+    glDrawArrays(GL_TRIANGLES, 0, chunk.vertices_buffer.size() / 3);
 
     // order is T * R * S to get SRT transformation for model matrix
     // order is P * V * M to get MVP transformation to clip space, then
@@ -96,6 +88,9 @@ void VoxelEngine::handle_input() {
   }
   if (window.key_pressed(GLFW_KEY_F)) {
     window.toggle_frame_limiting();
+  }
+  if (window.key_pressed(GLFW_KEY_P)) {
+    toggle_wireframe();
   }
   if (window.key_pressed(GLFW_KEY_W)) {
     player_camera.process_input(Direction::FORWARD, delta_time);

@@ -23,8 +23,6 @@ private:
   friend class VoxelEngine;
   std::vector<Voxel> voxels;
 
-  // TODO: use more efficient data type here
-  std::vector<uint32_t> indices_buffer;
   std::vector<float> vertices_buffer;
 
 public:

@@ -1,9 +1,17 @@
 #include "chunk.h"
 #include "common.h"
+#include <algorithm>
 
-static constexpr int CHUNK_WIDTH = 2;
-static constexpr int CHUNK_DEPTH = 8;
-static constexpr int CHUNK_HEIGHT = 4;
+static constexpr int CHUNK_WIDTH = 16;
+static constexpr int CHUNK_DEPTH = 16;
+static constexpr int CHUNK_HEIGHT = 256;
+static constexpr float VOXEL_SIDE = 1.0f;
+
+bool random_bool() {
+  return rand() > (RAND_MAX / 2);
+}
+
+enum class BlockFaces { BOTTOM = 0, TOP, LEFT, RIGHT, BACK, FRONT };
 
 Chunk::Chunk() {
   create_voxels();
@@ -11,202 +19,180 @@ Chunk::Chunk() {
 }
 
 void Chunk::create_voxels() {
-  voxels.resize(1);
-  voxels[0] = Voxel{.voxel_type = VoxelType::AIR};
+  voxels.resize(CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT);
+  for (auto y = 0; y < CHUNK_HEIGHT; y++) {
+    for (auto z = 0; z < CHUNK_DEPTH; z++) {
+      for (auto x = 0; x < CHUNK_WIDTH; x++) {
+        if (random_bool()) {
+          voxels[x + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH] =
+              Voxel{.voxel_type = VoxelType::GRASS};
+        } else {
+          voxels[x + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH] =
+              Voxel{.voxel_type = VoxelType::AIR};
+        }
+      }
+    }
+  }
 }
 
 void Chunk::create_mesh() {
-  static constexpr float VOXEL_SIDE = 1.0f;
 
-  auto x = 0;
-  auto y = 0;
-  auto z = 0;
+  // algorithm:
+  //  for each voxel that isn't an air type, check if any of it's six faces
+  //  borders an air block, if so add that face to the mesh, else ignore
 
-  vertices_buffer.push_back(x);
-  vertices_buffer.push_back(y);
-  vertices_buffer.push_back(-z);
+  using fp =
+      void(std::vector<float> & vertices_buffer, float x, float y, float z);
+  fp* vertices[] = {
+      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
+        vertices_buffer.push_back(x);
+        vertices_buffer.push_back(y);
+        vertices_buffer.push_back(-z);
+      },
+      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
+        vertices_buffer.push_back(x);
+        vertices_buffer.push_back(y);
+        vertices_buffer.push_back(-z - VOXEL_SIDE);
+      },
+      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
+        vertices_buffer.push_back(x + VOXEL_SIDE);
+        vertices_buffer.push_back(y);
+        vertices_buffer.push_back(-z - VOXEL_SIDE);
+      },
+      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
+        vertices_buffer.push_back(x + VOXEL_SIDE);
+        vertices_buffer.push_back(y);
+        vertices_buffer.push_back(-z);
+      },
+      // repeat
+      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
+        vertices_buffer.push_back(x);
+        vertices_buffer.push_back(y + VOXEL_SIDE);
+        vertices_buffer.push_back(-z);
+      },
+      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
+        vertices_buffer.push_back(x);
+        vertices_buffer.push_back(y + VOXEL_SIDE);
+        vertices_buffer.push_back(-z - VOXEL_SIDE);
+      },
+      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
+        vertices_buffer.push_back(x + VOXEL_SIDE);
+        vertices_buffer.push_back(y + VOXEL_SIDE);
+        vertices_buffer.push_back(-z - VOXEL_SIDE);
+      },
+      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
+        vertices_buffer.push_back(x + VOXEL_SIDE);
+        vertices_buffer.push_back(y + VOXEL_SIDE);
+        vertices_buffer.push_back(-z);
+      },
+  };
 
-  vertices_buffer.push_back(x);
-  vertices_buffer.push_back(y);
-  vertices_buffer.push_back(-z - VOXEL_SIDE);
+  // TODO: learn about and fix winding order to be clockwise
+  // TODO: face culling?
+  for (auto y = 0; y < CHUNK_HEIGHT; y++) {
+    for (auto z = 0; z < CHUNK_DEPTH; z++) {
+      for (auto x = 0; x < CHUNK_WIDTH; x++) {
+        // check if current voxel isn't an air block
+        auto index = x + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH;
+        if (voxels[index].voxel_type == VoxelType::AIR) {
+          continue;
+        }
 
-  vertices_buffer.push_back(x + VOXEL_SIDE);
-  vertices_buffer.push_back(y);
-  vertices_buffer.push_back(-z - VOXEL_SIDE);
+        for (auto face = (int)BlockFaces::BOTTOM; face < 6; face++) {
+          switch ((BlockFaces)face) {
+            case BlockFaces::BOTTOM: {
+              auto dy = std::max(y - 1, 0);
+              if (voxels[x + z * CHUNK_WIDTH + dy * CHUNK_WIDTH * CHUNK_DEPTH]
+                          .voxel_type == VoxelType::AIR ||
+                  y == 0) {
+                vertices[0](vertices_buffer, x, y, z);
+                vertices[1](vertices_buffer, x, y, z);
+                vertices[3](vertices_buffer, x, y, z);
 
-  vertices_buffer.push_back(x + VOXEL_SIDE);
-  vertices_buffer.push_back(y);
-  vertices_buffer.push_back(-z);
+                vertices[1](vertices_buffer, x, y, z);
+                vertices[2](vertices_buffer, x, y, z);
+                vertices[3](vertices_buffer, x, y, z);
+                break;
+              }
+            }
+            case BlockFaces::TOP: {
+              auto dy = std::min(y + 1, CHUNK_HEIGHT);
+              if (voxels[x + z * CHUNK_WIDTH + dy * CHUNK_WIDTH * CHUNK_DEPTH]
+                          .voxel_type == VoxelType::AIR ||
+                  y == CHUNK_HEIGHT - 1) {
+                vertices[4](vertices_buffer, x, y, z);
+                vertices[6](vertices_buffer, x, y, z);
+                vertices[7](vertices_buffer, x, y, z);
 
-  // repeat
+                vertices[4](vertices_buffer, x, y, z);
+                vertices[5](vertices_buffer, x, y, z);
+                vertices[6](vertices_buffer, x, y, z);
+                break;
+              }
+            }
+            case BlockFaces::LEFT: {
+              auto dx = std::max(x - 1, 0);
+              if (voxels[dx + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH]
+                          .voxel_type == VoxelType::AIR ||
+                  x == 0) {
+                vertices[1](vertices_buffer, x, y, z);
+                vertices[5](vertices_buffer, x, y, z);
+                vertices[0](vertices_buffer, x, y, z);
 
-  vertices_buffer.push_back(x);
-  vertices_buffer.push_back(y + VOXEL_SIDE);
-  vertices_buffer.push_back(-z);
+                vertices[5](vertices_buffer, x, y, z);
+                vertices[4](vertices_buffer, x, y, z);
+                vertices[0](vertices_buffer, x, y, z);
+                break;
+              }
+            }
+            case BlockFaces::RIGHT: {
+              auto dx = std::min(x + 1, CHUNK_WIDTH);
+              if (voxels[dx + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH]
+                          .voxel_type == VoxelType::AIR ||
+                  x == CHUNK_WIDTH - 1) {
+                vertices[3](vertices_buffer, x, y, z);
+                vertices[7](vertices_buffer, x, y, z);
+                vertices[2](vertices_buffer, x, y, z);
 
-  vertices_buffer.push_back(x);
-  vertices_buffer.push_back(y + VOXEL_SIDE);
-  vertices_buffer.push_back(-z - VOXEL_SIDE);
+                vertices[7](vertices_buffer, x, y, z);
+                vertices[6](vertices_buffer, x, y, z);
+                vertices[2](vertices_buffer, x, y, z);
+              }
+              break;
+            }
+            case BlockFaces::BACK: {
+              auto dz = std::min(z + 1, CHUNK_DEPTH);
+              if (voxels[x + dz * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH]
+                          .voxel_type == VoxelType::AIR ||
+                  z == CHUNK_DEPTH - 1) {
+                vertices[2](vertices_buffer, x, y, z);
+                vertices[6](vertices_buffer, x, y, z);
+                vertices[1](vertices_buffer, x, y, z);
 
-  vertices_buffer.push_back(x + VOXEL_SIDE);
-  vertices_buffer.push_back(y + VOXEL_SIDE);
-  vertices_buffer.push_back(-z - VOXEL_SIDE);
+                vertices[6](vertices_buffer, x, y, z);
+                vertices[5](vertices_buffer, x, y, z);
+                vertices[1](vertices_buffer, x, y, z);
+                break;
+              }
+            }
+            case BlockFaces::FRONT: {
+              auto dz = std::max(z - 1, 0);
+              if (voxels[x + dz * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH]
+                          .voxel_type == VoxelType::AIR ||
+                  z == 0) {
+                vertices[0](vertices_buffer, x, y, z);
+                vertices[3](vertices_buffer, x, y, z);
+                vertices[4](vertices_buffer, x, y, z);
 
-  vertices_buffer.push_back(x + VOXEL_SIDE);
-  vertices_buffer.push_back(y + VOXEL_SIDE);
-  vertices_buffer.push_back(-z);
-
-  // range from (INDEX) -> (INDEX + 11)
-  // need 12 indices
-  int base_index = 0;
-
-  // bottom
-  indices_buffer.push_back(base_index + 0 * 3);
-  indices_buffer.push_back(base_index + 1 * 3);
-  indices_buffer.push_back(base_index + 3 * 3);
-
-  indices_buffer.push_back(base_index + 1 * 3);
-  indices_buffer.push_back(base_index + 2 * 3);
-  indices_buffer.push_back(base_index + 3 * 3);
-
-  // top
-  indices_buffer.push_back(base_index + 7 * 3);
-  indices_buffer.push_back(base_index + 6 * 3);
-  indices_buffer.push_back(base_index + 4 * 3);
-
-  indices_buffer.push_back(base_index + 6 * 3);
-  indices_buffer.push_back(base_index + 5 * 3);
-  indices_buffer.push_back(base_index + 4 * 3);
-
-  // left
-  indices_buffer.push_back(base_index + 1 * 3);
-  indices_buffer.push_back(base_index + 5 * 3);
-  indices_buffer.push_back(base_index + 0 * 3);
-
-  indices_buffer.push_back(base_index + 5 * 3);
-  indices_buffer.push_back(base_index + 4 * 3);
-  indices_buffer.push_back(base_index + 0 * 3);
-
-  // right
-  indices_buffer.push_back(base_index + 3 * 3);
-  indices_buffer.push_back(base_index + 7 * 3);
-  indices_buffer.push_back(base_index + 2 * 3);
-
-  indices_buffer.push_back(base_index + 7 * 3);
-  indices_buffer.push_back(base_index + 6 * 3);
-  indices_buffer.push_back(base_index + 2 * 3);
-
-  // front
-  indices_buffer.push_back(base_index + 0 * 3);
-  indices_buffer.push_back(base_index + 4 * 3);
-  indices_buffer.push_back(base_index + 3 * 3);
-
-  indices_buffer.push_back(base_index + 4 * 3);
-  indices_buffer.push_back(base_index + 7 * 3);
-  indices_buffer.push_back(base_index + 3 * 3);
-
-  // back
-  indices_buffer.push_back(base_index + 2 * 3);
-  indices_buffer.push_back(base_index + 6 * 3);
-  indices_buffer.push_back(base_index + 1 * 3);
-
-  indices_buffer.push_back(base_index + 6 * 3);
-  indices_buffer.push_back(base_index + 5 * 3);
-  indices_buffer.push_back(base_index + 1 * 3);
+                vertices[4](vertices_buffer, x, y, z);
+                vertices[7](vertices_buffer, x, y, z);
+                vertices[3](vertices_buffer, x, y, z);
+                break;
+              }
+            }
+          }
+        }
+      }
+    }
+  }
 }
-
-/*
-static constexpr float VOXEL_SIDE = 1.0f;
-
-vertices_buffer.push_back(x);
-vertices_buffer.push_back(y);
-vertices_buffer.push_back(-z);
-
-vertices_buffer.push_back(x);
-vertices_buffer.push_back(y);
-vertices_buffer.push_back(-z - VOXEL_SIDE);
-
-vertices_buffer.push_back(x + VOXEL_SIDE);
-vertices_buffer.push_back(y);
-vertices_buffer.push_back(-z - VOXEL_SIDE);
-
-vertices_buffer.push_back(x + VOXEL_SIDE);
-vertices_buffer.push_back(y);
-vertices_buffer.push_back(-z);
-
-// repeat
-
-vertices_buffer.push_back(x);
-vertices_buffer.push_back(y + VOXEL_SIDE);
-vertices_buffer.push_back(-z);
-
-vertices_buffer.push_back(x);
-vertices_buffer.push_back(y + VOXEL_SIDE);
-vertices_buffer.push_back(-z - VOXEL_SIDE);
-
-vertices_buffer.push_back(x + VOXEL_SIDE);
-vertices_buffer.push_back(y + VOXEL_SIDE);
-vertices_buffer.push_back(-z - VOXEL_SIDE);
-
-vertices_buffer.push_back(x + VOXEL_SIDE);
-vertices_buffer.push_back(y + VOXEL_SIDE);
-vertices_buffer.push_back(-z);
-
-// range from (INDEX) -> (INDEX + 11)
-// need 12 indices
-int base_index = (x + z * 16 + y * CHUNK_HEIGHT * 16) * 8;
-
-// bottom
-indices_buffer.push_back(base_index);
-indices_buffer.push_back(base_index + 1);
-indices_buffer.push_back(base_index + 3);
-
-indices_buffer.push_back(base_index + 1);
-indices_buffer.push_back(base_index + 2);
-indices_buffer.push_back(base_index + 3);
-
-// top
-indices_buffer.push_back(base_index + 4);
-indices_buffer.push_back(base_index + 5);
-indices_buffer.push_back(base_index + 7);
-
-indices_buffer.push_back(base_index + 5);
-indices_buffer.push_back(base_index + 6);
-indices_buffer.push_back(base_index + 7);
-
-// left
-indices_buffer.push_back(base_index);
-indices_buffer.push_back(base_index + 4);
-indices_buffer.push_back(base_index + 1);
-
-indices_buffer.push_back(base_index + 4);
-indices_buffer.push_back(base_index + 5);
-indices_buffer.push_back(base_index + 1);
-
-// right
-indices_buffer.push_back(base_index + 3);
-indices_buffer.push_back(base_index + 7);
-indices_buffer.push_back(base_index + 2);
-
-indices_buffer.push_back(base_index + 7);
-indices_buffer.push_back(base_index + 6);
-indices_buffer.push_back(base_index + 2);
-
-// front
-indices_buffer.push_back(base_index);
-indices_buffer.push_back(base_index + 4);
-indices_buffer.push_back(base_index + 3);
-
-indices_buffer.push_back(base_index + 4);
-indices_buffer.push_back(base_index + 7);
-indices_buffer.push_back(base_index + 3);
-
-// back
-indices_buffer.push_back(base_index + 1);
-indices_buffer.push_back(base_index + 5);
-indices_buffer.push_back(base_index + 2);
-
-indices_buffer.push_back(base_index + 5);
-indices_buffer.push_back(base_index + 6);
-indices_buffer.push_back(base_index + 2);
-*/
