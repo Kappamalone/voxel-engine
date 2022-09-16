@@ -4,14 +4,12 @@
 
 static constexpr int CHUNK_WIDTH = 16;
 static constexpr int CHUNK_DEPTH = 16;
-static constexpr int CHUNK_HEIGHT = 256;
+static constexpr int CHUNK_HEIGHT = 16;
 static constexpr float VOXEL_SIDE = 1.0f;
 
 bool random_bool() {
   return rand() > (RAND_MAX / 2);
 }
-
-enum class BlockFaces { BOTTOM = 0, TOP, LEFT, RIGHT, BACK, FRONT };
 
 Chunk::Chunk() {
   create_voxels();
@@ -35,15 +33,10 @@ void Chunk::create_voxels() {
   }
 }
 
-void Chunk::create_mesh() {
-
-  // algorithm:
-  //  for each voxel that isn't an air type, check if any of it's six faces
-  //  borders an air block, if so add that face to the mesh, else ignore
-
+void Chunk::construct_face(BlockFaces face, float x, float y, float z) {
   using fp =
       void(std::vector<float> & vertices_buffer, float x, float y, float z);
-  fp* vertices[] = {
+  static fp* vertices[] = {
       [](std::vector<float>& vertices_buffer, float x, float y, float z) {
         vertices_buffer.push_back(x);
         vertices_buffer.push_back(y);
@@ -87,8 +80,74 @@ void Chunk::create_mesh() {
       },
   };
 
-  // TODO: learn about and fix winding order to be clockwise
-  // TODO: face culling?
+  switch ((BlockFaces)face) {
+    case BlockFaces::BOTTOM:
+      vertices[2](vertices_buffer, x, y, z);
+      vertices[3](vertices_buffer, x, y, z);
+      vertices[0](vertices_buffer, x, y, z);
+
+      vertices[0](vertices_buffer, x, y, z);
+      vertices[1](vertices_buffer, x, y, z);
+      vertices[2](vertices_buffer, x, y, z);
+      break;
+    case BlockFaces::TOP:
+      vertices[7](vertices_buffer, x, y, z);
+      vertices[6](vertices_buffer, x, y, z);
+      vertices[5](vertices_buffer, x, y, z);
+
+      vertices[5](vertices_buffer, x, y, z);
+      vertices[4](vertices_buffer, x, y, z);
+      vertices[7](vertices_buffer, x, y, z);
+      break;
+    case BlockFaces::LEFT:
+      vertices[0](vertices_buffer, x, y, z);
+      vertices[4](vertices_buffer, x, y, z);
+      vertices[5](vertices_buffer, x, y, z);
+
+      vertices[5](vertices_buffer, x, y, z);
+      vertices[1](vertices_buffer, x, y, z);
+      vertices[0](vertices_buffer, x, y, z);
+      break;
+    case BlockFaces::RIGHT:
+      vertices[2](vertices_buffer, x, y, z);
+      vertices[6](vertices_buffer, x, y, z);
+      vertices[7](vertices_buffer, x, y, z);
+
+      vertices[7](vertices_buffer, x, y, z);
+      vertices[3](vertices_buffer, x, y, z);
+      vertices[2](vertices_buffer, x, y, z);
+      break;
+    case BlockFaces::FRONT:
+      vertices[3](vertices_buffer, x, y, z);
+      vertices[7](vertices_buffer, x, y, z);
+      vertices[4](vertices_buffer, x, y, z);
+
+      vertices[4](vertices_buffer, x, y, z);
+      vertices[0](vertices_buffer, x, y, z);
+      vertices[3](vertices_buffer, x, y, z);
+      break;
+    case BlockFaces::BACK:
+      vertices[1](vertices_buffer, x, y, z);
+      vertices[5](vertices_buffer, x, y, z);
+      vertices[6](vertices_buffer, x, y, z);
+
+      vertices[6](vertices_buffer, x, y, z);
+      vertices[2](vertices_buffer, x, y, z);
+      vertices[1](vertices_buffer, x, y, z);
+      break;
+  }
+}
+
+void Chunk::create_mesh() {
+
+  // algorithm:
+  //  for each voxel that isn't an air type, check if any of it's six faces
+  //  borders an air block, if so add that face to the mesh, else ignore
+  //
+  //  TODO: texturing and texture atlases
+  //  TODO: make size of blocks actually variable
+  //  TODO: handle chunk border vertices culling
+
   for (auto y = 0; y < CHUNK_HEIGHT; y++) {
     for (auto z = 0; z < CHUNK_DEPTH; z++) {
       for (auto x = 0; x < CHUNK_WIDTH; x++) {
@@ -101,94 +160,76 @@ void Chunk::create_mesh() {
         for (auto face = (int)BlockFaces::BOTTOM; face < 6; face++) {
           switch ((BlockFaces)face) {
             case BlockFaces::BOTTOM: {
-              auto dy = std::max(y - 1, 0);
-              if (voxels[x + z * CHUNK_WIDTH + dy * CHUNK_WIDTH * CHUNK_DEPTH]
-                          .voxel_type == VoxelType::AIR ||
-                  y == 0) {
-                vertices[0](vertices_buffer, x, y, z);
-                vertices[1](vertices_buffer, x, y, z);
-                vertices[3](vertices_buffer, x, y, z);
-
-                vertices[1](vertices_buffer, x, y, z);
-                vertices[2](vertices_buffer, x, y, z);
-                vertices[3](vertices_buffer, x, y, z);
-                break;
+              if (y == 0) {
+                construct_face(BlockFaces::BOTTOM, x, y, z);
+                continue;
               }
+              if (voxels[x + z * CHUNK_WIDTH +
+                         (y - 1) * CHUNK_WIDTH * CHUNK_DEPTH]
+                      .voxel_type == VoxelType::AIR) {
+                construct_face(BlockFaces::BOTTOM, x, y, z);
+              }
+              break;
             }
             case BlockFaces::TOP: {
-              auto dy = std::min(y + 1, CHUNK_HEIGHT);
-              if (voxels[x + z * CHUNK_WIDTH + dy * CHUNK_WIDTH * CHUNK_DEPTH]
-                          .voxel_type == VoxelType::AIR ||
-                  y == CHUNK_HEIGHT - 1) {
-                vertices[4](vertices_buffer, x, y, z);
-                vertices[6](vertices_buffer, x, y, z);
-                vertices[7](vertices_buffer, x, y, z);
-
-                vertices[4](vertices_buffer, x, y, z);
-                vertices[5](vertices_buffer, x, y, z);
-                vertices[6](vertices_buffer, x, y, z);
-                break;
+              if (y == CHUNK_HEIGHT - 1) {
+                construct_face(BlockFaces::TOP, x, y, z);
+                continue;
               }
+              if (voxels[x + z * CHUNK_WIDTH +
+                         (y + 1) * CHUNK_WIDTH * CHUNK_DEPTH]
+                      .voxel_type == VoxelType::AIR) {
+                construct_face(BlockFaces::TOP, x, y, z);
+              }
+              break;
             }
             case BlockFaces::LEFT: {
-              auto dx = std::max(x - 1, 0);
-              if (voxels[dx + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH]
-                          .voxel_type == VoxelType::AIR ||
-                  x == 0) {
-                vertices[1](vertices_buffer, x, y, z);
-                vertices[5](vertices_buffer, x, y, z);
-                vertices[0](vertices_buffer, x, y, z);
-
-                vertices[5](vertices_buffer, x, y, z);
-                vertices[4](vertices_buffer, x, y, z);
-                vertices[0](vertices_buffer, x, y, z);
-                break;
+              if (x == 0) {
+                construct_face(BlockFaces::LEFT, x, y, z);
+                continue;
               }
+              if (voxels[(x - 1) + z * CHUNK_WIDTH +
+                         y * CHUNK_WIDTH * CHUNK_DEPTH]
+                      .voxel_type == VoxelType::AIR) {
+                construct_face(BlockFaces::LEFT, x, y, z);
+              }
+              break;
             }
             case BlockFaces::RIGHT: {
-              auto dx = std::min(x + 1, CHUNK_WIDTH);
-              if (voxels[dx + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH]
-                          .voxel_type == VoxelType::AIR ||
-                  x == CHUNK_WIDTH - 1) {
-                vertices[3](vertices_buffer, x, y, z);
-                vertices[7](vertices_buffer, x, y, z);
-                vertices[2](vertices_buffer, x, y, z);
-
-                vertices[7](vertices_buffer, x, y, z);
-                vertices[6](vertices_buffer, x, y, z);
-                vertices[2](vertices_buffer, x, y, z);
+              if (x == CHUNK_WIDTH - 1) {
+                construct_face(BlockFaces::RIGHT, x, y, z);
+                continue;
+              }
+              if (voxels[(x + 1) + z * CHUNK_WIDTH +
+                         y * CHUNK_WIDTH * CHUNK_DEPTH]
+                      .voxel_type == VoxelType::AIR) {
+                construct_face(BlockFaces::RIGHT, x, y, z);
+              }
+              break;
+            }
+            case BlockFaces::FRONT: {
+              if (z == 0) {
+                construct_face(BlockFaces::FRONT, x, y, z);
+                continue;
+              }
+              if (voxels[x + (z - 1) * CHUNK_WIDTH +
+                         y * CHUNK_WIDTH * CHUNK_DEPTH]
+                      .voxel_type == VoxelType::AIR) {
+                construct_face(BlockFaces::FRONT, x, y, z);
               }
               break;
             }
             case BlockFaces::BACK: {
-              auto dz = std::min(z + 1, CHUNK_DEPTH);
-              if (voxels[x + dz * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH]
-                          .voxel_type == VoxelType::AIR ||
-                  z == CHUNK_DEPTH - 1) {
-                vertices[2](vertices_buffer, x, y, z);
-                vertices[6](vertices_buffer, x, y, z);
-                vertices[1](vertices_buffer, x, y, z);
-
-                vertices[6](vertices_buffer, x, y, z);
-                vertices[5](vertices_buffer, x, y, z);
-                vertices[1](vertices_buffer, x, y, z);
-                break;
+              if (z == CHUNK_DEPTH - 1) {
+                construct_face(BlockFaces::BACK, x, y, z);
+                continue;
               }
-            }
-            case BlockFaces::FRONT: {
-              auto dz = std::max(z - 1, 0);
-              if (voxels[x + dz * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH]
-                          .voxel_type == VoxelType::AIR ||
-                  z == 0) {
-                vertices[0](vertices_buffer, x, y, z);
-                vertices[3](vertices_buffer, x, y, z);
-                vertices[4](vertices_buffer, x, y, z);
-
-                vertices[4](vertices_buffer, x, y, z);
-                vertices[7](vertices_buffer, x, y, z);
-                vertices[3](vertices_buffer, x, y, z);
-                break;
+              if (voxels[x + (z + 1) * CHUNK_WIDTH +
+                         y * CHUNK_WIDTH * CHUNK_DEPTH]
+                      .voxel_type == VoxelType::AIR) {
+                construct_face(BlockFaces::BACK, x, y, z);
               }
+              break;
             }
           }
         }

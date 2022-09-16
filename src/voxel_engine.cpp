@@ -13,6 +13,7 @@ void VoxelEngine::run() {
   uint32_t vao;
   uint32_t vbo;
 
+  // TODO: how to send vertices over every frame?
   glCreateVertexArrays(1, &vao);
   glCreateBuffers(1, &vbo);
   glNamedBufferData(vbo, chunk.vertices_buffer.size() * 4,
@@ -59,6 +60,7 @@ void VoxelEngine::run() {
     ImGui::End();
 
     glEnable(GL_DEPTH_TEST);
+    glEnable(GL_CULL_FACE);
     glClearColor(0.2, 0.3, 0.3, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
