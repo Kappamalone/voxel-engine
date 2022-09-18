@@ -1,4 +1,5 @@
 #include "voxel_engine.h"
+
 // Project Description:
 // common/ -> common opengl abstractions and utility macros/functions
 

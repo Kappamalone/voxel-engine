@@ -9,36 +9,13 @@ VoxelEngine::VoxelEngine(int viewport_width, int viewport_height)
 }
 
 void VoxelEngine::run() {
-  Chunk chunk = Chunk();
-  uint32_t vao;
-  uint32_t vbo;
-
-  // TODO: how to send vertices over every frame?
-  glCreateVertexArrays(1, &vao);
-  glCreateBuffers(1, &vbo);
-  glNamedBufferData(vbo, chunk.vertices_buffer.size() * 4,
-                    chunk.vertices_buffer.data(), GL_STATIC_DRAW);
-
-  glVertexArrayVertexBuffer(vao, 0, vbo, 0, sizeof(float) * 3);
-
-  glEnableVertexArrayAttrib(vao, 0);
-  glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
-  glVertexArrayAttribBinding(vao, 0, 0);
-
-  ShaderProgram shader_program =
-      ShaderProgram("../src/shaders/voxel.vert", "../src/shaders/voxel.frag",
-                    ShaderSourceType::FILE);
   glm::mat4 model = glm::mat4(1.0f);
   glm::mat4 projection = glm::perspective(
       glm::radians(45.0f), window.get_viewport_aspect_ratio(), 0.1f, 100.0f);
-  shader_program.set_uniform_matrix<UniformMSize::FOUR>("model", 1, false,
-                                                        glm::value_ptr(model));
-  shader_program.set_uniform_matrix<UniformMSize::FOUR>(
-      "projection", 1, false, glm::value_ptr(projection));
+  Chunk chunk = Chunk(model, projection);
 
   glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   while (!glfwWindowShouldClose(window.get_window())) {
-
     window.imgui_new_frame();
 
     handle_input();
@@ -64,12 +41,7 @@ void VoxelEngine::run() {
     glClearColor(0.2, 0.3, 0.3, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    shader_program.set_uniform_matrix<UniformMSize::FOUR>(
-        "view", 1, false, glm::value_ptr(*player_camera.get_view_matrix()));
-
-    shader_program.use();
-    glBindVertexArray(vao);
-    glDrawArrays(GL_TRIANGLES, 0, chunk.vertices_buffer.size() / 3);
+    chunk.render_mesh(*player_camera.get_view_matrix());
 
     // order is T * R * S to get SRT transformation for model matrix
     // order is P * V * M to get MVP transformation to clip space, then
