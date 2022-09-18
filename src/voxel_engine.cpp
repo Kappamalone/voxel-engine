@@ -14,10 +14,9 @@ void VoxelEngine::run() {
       glm::radians(45.0f), window.get_viewport_aspect_ratio(), 0.1f, 100.0f);
   Chunk chunk = Chunk(model, projection);
 
-  glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
+  // glPolygonMode(GL_FRONT_AND_BACK, GL_LINE);
   while (!glfwWindowShouldClose(window.get_window())) {
     window.imgui_new_frame();
-
     handle_input();
 
     // ImGui::ShowDemoWindow();
