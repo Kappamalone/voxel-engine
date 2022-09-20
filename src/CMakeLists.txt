@@ -6,6 +6,8 @@ SET(SOURCES
     chunk.cpp
     player_camera.h
     player_camera.cpp
+    chunk_manager.h
+    chunk_manager.cpp
 )
 
 add_subdirectory(common)

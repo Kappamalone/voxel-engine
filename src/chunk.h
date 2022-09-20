@@ -13,7 +13,7 @@
 
 static constexpr int CHUNK_WIDTH = 16;
 static constexpr int CHUNK_DEPTH = 16;
-static constexpr int CHUNK_HEIGHT = 16;
+static constexpr int CHUNK_HEIGHT = 4;
 static constexpr float VOXEL_LENGTH = 1.0f;
 
 constexpr auto chunk_vert = R"(
@@ -37,7 +37,7 @@ void main()
 constexpr auto chunk_frag = R"(
 #version 460 core
 
-layout(binding = 0) uniform sampler2D tex_atlas;
+layout (binding = 0) uniform sampler2D tex_atlas;
 
 in vec2 tex_coord;
 out vec4 frag_color;
@@ -50,6 +50,7 @@ void main()
 
 enum class VoxelType {
   AIR,
+  DIRT,
   GRASS,
 };
 
@@ -66,16 +67,6 @@ private:
 
   std::vector<Voxel> voxels;
   std::vector<float> vertices_buffer;
-  int attributes_per_vertice = 5;
-
-  GLuint vao;
-  GLuint vbo;
-  glm::mat4 model;
-  glm::mat4 view;
-  glm::mat4 projection;
-  ShaderProgram shader_program;
-
-  GLuint tex_atlas;
   int tex_atlas_rows;
 
   Voxel& get_voxel(int x, int y, int z) {
@@ -88,28 +79,45 @@ private:
 
   void construct_face(BlockFaces face, int atlas_index, float x, float y,
                       float z);
+  // TODO: is there a way to avoid having tex coords sent to the gpu?
   void emit_texture_coordinates(TexturePosition position, int atlas_index);
   void create_mesh();
   void create_voxels();
 
 public:
-  Chunk(glm::mat4 model, glm::mat4 projection);
+  Chunk(int tex_atlas_rows);
 
-  // TODO: any way to group all visible chunks rendering into a single call?
-  // that way only model matrix is needed per chunk and is way faster
-  void render_mesh(glm::mat4& view);
+  float* get_vertices_data() {
+    return vertices_buffer.data();
+  }
+
+  int get_vertices_byte_size() {
+    return vertices_buffer.size() * sizeof(float);
+  }
 
 private:
+  // clang-format off
   std::unordered_map<VoxelType, std::unordered_map<BlockFaces, int>>
-      block_to_faces_map = {{VoxelType::GRASS,
-                             {
-                                 {BlockFaces::BOTTOM, 0},
-                                 {BlockFaces::TOP, 5},
-                                 {BlockFaces::LEFT, 0},
-                                 {BlockFaces::RIGHT, 10},
-                                 {BlockFaces::FRONT, 20},
-                                 {BlockFaces::BACK, 20},
-                             }}
-
-  };
+      block_to_faces_map = {
+      {VoxelType::GRASS,
+      {
+        {BlockFaces::BOTTOM, 2},
+        {BlockFaces::TOP, 0},
+        {BlockFaces::LEFT, 3},
+        {BlockFaces::RIGHT, 3},
+        {BlockFaces::FRONT, 3},
+        {BlockFaces::BACK, 3},
+        }
+      },
+      {VoxelType::DIRT,
+      {
+        {BlockFaces::BOTTOM, 2},
+        {BlockFaces::TOP, 2},
+        {BlockFaces::LEFT, 2},
+        {BlockFaces::RIGHT, 2},
+        {BlockFaces::FRONT, 2},
+        {BlockFaces::BACK, 2}
+      }
+  }};
+  // clang-format on
 };

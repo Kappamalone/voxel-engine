@@ -3,72 +3,9 @@
 #include <algorithm>
 #include <cmath>
 
-Chunk::Chunk(glm::mat4 model, glm::mat4 projection)
-    : model(model), projection(projection),
-      shader_program(chunk_vert, chunk_frag, ShaderSourceType::STRING) {
-  // texture atlas
-  // TODO: abstract this away into a class?
-  glCreateTextures(GL_TEXTURE_2D, 1, &tex_atlas);
-  glTextureParameteri(tex_atlas, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_EDGE);
-  glTextureParameteri(tex_atlas, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_EDGE);
-  glTextureParameteri(tex_atlas, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
-  glTextureParameteri(tex_atlas, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
-
-  // texture atlas must be a power of 2, and have equal width and height eg:
-  // 256x256
-  int width, height, channels;
-  // stbi_set_flip_vertically_on_load(true);
-  unsigned char* pixels =
-      stbi_load("../src/assets/terrain.png", &width, &height, &channels, 0);
-  if (!pixels) {
-    PANIC("Cannot find texture!\n");
-  }
-  PRINT("[DEBUG] Texture atlas (width, height, channels): ({}, {}, {})\n",
-        width, height, channels);
-  tex_atlas_rows = std::sqrt(width);
-  glTextureStorage2D(tex_atlas, 1, GL_RGBA8, width, height);
-  glTextureSubImage2D(tex_atlas, 0, 0, 0, width, height, GL_RGBA,
-                      GL_UNSIGNED_BYTE, pixels);
-  stbi_image_free(pixels);
-  // TODO: mipmap?
-
+Chunk::Chunk(int tex_atlas_rows) : tex_atlas_rows(tex_atlas_rows) {
   create_voxels();
   create_mesh();
-
-  // FIXME: GL_STATIC_DRAW?
-  glCreateVertexArrays(1, &vao);
-  glCreateBuffers(1, &vbo);
-  glNamedBufferData(vbo, vertices_buffer.size() * 4, vertices_buffer.data(),
-                    GL_STATIC_DRAW);
-
-  glVertexArrayVertexBuffer(vao, 0, vbo, 0,
-                            sizeof(float) * attributes_per_vertice);
-
-  // vertice
-  glEnableVertexArrayAttrib(vao, 0);
-  glVertexArrayAttribFormat(vao, 0, 3, GL_FLOAT, GL_FALSE, 0);
-  glVertexArrayAttribBinding(vao, 0, 0);
-
-  // tex coord
-  glEnableVertexArrayAttrib(vao, 1);
-  glVertexArrayAttribFormat(vao, 1, 2, GL_FLOAT, GL_FALSE, sizeof(float) * 3);
-  glVertexArrayAttribBinding(vao, 1, 0);
-
-  shader_program.set_uniform_matrix<UniformMSize::FOUR>("model", 1, false,
-                                                        glm::value_ptr(model));
-  shader_program.set_uniform_matrix<UniformMSize::FOUR>(
-      "projection", 1, false, glm::value_ptr(projection));
-}
-
-void Chunk::render_mesh(glm::mat4& view) {
-  shader_program.set_uniform_matrix<UniformMSize::FOUR>("view", 1, false,
-                                                        glm::value_ptr(view));
-
-  shader_program.use();
-  glBindVertexArray(vao);
-  glBindTextureUnit(0, tex_atlas);
-  glDrawArrays(GL_TRIANGLES, 0,
-               vertices_buffer.size() / attributes_per_vertice);
 }
 
 void Chunk::create_voxels() {

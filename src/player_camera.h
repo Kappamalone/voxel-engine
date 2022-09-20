@@ -33,4 +33,8 @@ public:
     view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
     return &view;
   }
+
+  glm::vec3 get_player_pos() {
+    return camera_pos;
+  }
 };

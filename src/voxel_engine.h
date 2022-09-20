@@ -1,4 +1,5 @@
 #pragma once
+#include "chunk_manager.h"
 #include "player_camera.h"
 #include "window.h"
 
@@ -6,6 +7,7 @@ class VoxelEngine {
 private:
   Window window;
   PlayerCamera player_camera;
+  ChunkManager chunk_manager;
 
   bool show_wireframe = false;
 
