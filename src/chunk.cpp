@@ -3,7 +3,7 @@
 #include <algorithm>
 #include <cmath>
 
-Chunk::Chunk(int tex_atlas_rows) : tex_atlas_rows(tex_atlas_rows) {
+Chunk::Chunk() {
   create_voxels();
   create_mesh();
 }
@@ -197,7 +197,6 @@ void Chunk::create_mesh() {
   //  for each voxel that isn't an air type, check if any of it's six faces
   //  borders an air block, if so add that face to the mesh, else ignore
   //
-  //  TODO: texturing and texture atlases
   //  TODO: handle chunk border vertices culling
 
   for (auto y = 0; y < CHUNK_HEIGHT; y++) {

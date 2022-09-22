@@ -13,7 +13,7 @@
 
 static constexpr int CHUNK_WIDTH = 16;
 static constexpr int CHUNK_DEPTH = 16;
-static constexpr int CHUNK_HEIGHT = 4;
+static constexpr int CHUNK_HEIGHT = 16;
 static constexpr float VOXEL_LENGTH = 1.0f;
 
 constexpr auto chunk_vert = R"(
@@ -23,14 +23,14 @@ layout (location = 1) in vec2 _tex_coord;
 
 out vec2 tex_coord;
 
+// uniform mat4 models[64];
 uniform mat4 model;
 uniform mat4 view;
 uniform mat4 projection;
 
-void main()
-{
-    gl_Position = projection * view * model * vec4(vertex_coord, 1.0);
-    tex_coord = _tex_coord;
+void main() {
+  gl_Position = projection * view * model * vec4(vertex_coord, 1.0);
+  tex_coord = _tex_coord;
 }
   )";
 
@@ -42,9 +42,8 @@ layout (binding = 0) uniform sampler2D tex_atlas;
 in vec2 tex_coord;
 out vec4 frag_color;
 
-void main()
-{
-    frag_color = texture(tex_atlas, tex_coord);
+void main() {
+  frag_color = texture(tex_atlas, tex_coord);
 }
   )";
 
@@ -67,7 +66,7 @@ private:
 
   std::vector<Voxel> voxels;
   std::vector<float> vertices_buffer;
-  int tex_atlas_rows;
+  int tex_atlas_rows = 16;
 
   Voxel& get_voxel(int x, int y, int z) {
     return voxels[x + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH];
@@ -85,7 +84,7 @@ private:
   void create_voxels();
 
 public:
-  Chunk(int tex_atlas_rows);
+  Chunk();
 
   float* get_vertices_data() {
     return vertices_buffer.data();

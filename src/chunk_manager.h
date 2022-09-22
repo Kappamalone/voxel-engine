@@ -1,29 +1,34 @@
 #pragma once
 #include "chunk.h"
 
-// handles all terrain (chunk) related operations
-//
-// Chunk manager determines which chunks are in the vicinity of the player
-// Then each chunk passes its vertices to be rendered
-//
-// This means that the shader program and texture atlas ownership should be
-// passed to this class instead to reduce overhead from rendering individual
-// chunks
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/hash.hpp"
+
+struct ChunkDrawData {
+  glm::vec3 model;
+  int offset;
+  Chunk* chunk;
+};
+
 class ChunkManager {
 private:
   GLuint vao;
   GLuint vbo;
   int cpu_bytes_allocated = 0;
-  int gpu_bytes_allocated = 1024 * 1024;
+  int gpu_bytes_allocated = 1024 * 1024 * 100;
   ShaderProgram shader_program;
   int attributes_per_vertice = 5;
 
   GLuint tex_atlas;
   int tex_atlas_rows;
 
-  std::vector<Chunk> render_list;
+  std::unordered_map<glm::vec3, Chunk> world_chunks;
+  std::vector<ChunkDrawData> visible_list;
+  std::vector<ChunkDrawData> render_list;
 
-  void manage_chunks();
+  void manage_chunks(glm::vec3 pos);
+
+  int view_distance = 3;
 
 public:
   ChunkManager(glm::mat4 projection);
