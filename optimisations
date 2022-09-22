@@ -1,0 +1,11 @@
+chunks:
+use element buffers for vertices
+more efficient data types for voxels data
+something about texture coordinates? (texture arrays)
+greedy meshing
+
+chunk manager:
+frustum culling using stuff like octrees
+chunk boundary mesh culling
+
+chunk memory allocator?

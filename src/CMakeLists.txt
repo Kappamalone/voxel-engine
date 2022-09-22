@@ -13,7 +13,7 @@ SET(SOURCES
 add_subdirectory(common)
 
 add_executable(${PROJECT_NAME} ${SOURCES})
-target_link_libraries(${PROJECT_NAME} PRIVATE common stb_image glm)
+target_link_libraries(${PROJECT_NAME} PRIVATE common stb_image glm perlin_noise)
 # target_link_libraries(${PROJECT_NAME} PRIVATE common glfw glad imgui fmt stb_image glm)
 # target_include_directories(${PROJECT_NAME} PRIVATE ../externals/stb_image/)
 

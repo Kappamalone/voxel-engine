@@ -1,162 +1,178 @@
 #include "chunk.h"
+#include "PerlinNoise.hpp"
 #include "common.h"
 #include <algorithm>
 #include <cmath>
 
-Chunk::Chunk() {
+Chunk::Chunk(float xoffset, float zoffset)
+    : xoffset(xoffset), zoffset(zoffset) {
+
   create_voxels();
   create_mesh();
 }
 
 void Chunk::create_voxels() {
   voxels.resize(CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT);
-  for (auto y = 0; y < CHUNK_HEIGHT; y++) {
-    for (auto z = 0; z < CHUNK_DEPTH; z++) {
-      for (auto x = 0; x < CHUNK_WIDTH; x++) {
-        voxels[x + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH] =
-            Voxel{.voxel_type = VoxelType::GRASS};
+  std::fill(voxels.begin(), voxels.end(), Voxel{.voxel_type = VoxelType::AIR});
+  for (auto z = 0; z < CHUNK_DEPTH; z++) {
+    for (auto x = 0; x < CHUNK_WIDTH; x++) {
+      static const siv::PerlinNoise::seed_type seed = 123456u;
+      static const siv::PerlinNoise perlin{seed};
+      int height =
+          (perlin.octave2D((xoffset + x) * 0.01, (zoffset + -z) * 0.01, 2) +
+           1) /
+          2.0f * WORLD_HEIGHT;
+
+      for (auto y = 0; y < height; y++) {
+        set_voxel(x, y, z, VoxelType::DIRT);
+        if (y + 1 == height) {
+          set_voxel(x, y, z, VoxelType::GRASS);
+        }
       }
     }
   }
 }
 
+// TODO: use an enum here
+void Chunk::emit_vertex_coordinates(int index, float x, float y, float z) {
+  switch (index) {
+    case 0:
+      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH);
+      vertices_buffer.push_back(y * VOXEL_LENGTH);
+      vertices_buffer.push_back(zoffset + (-z * VOXEL_LENGTH));
+      break;
+    case 1:
+      vertices_buffer.push_back(xoffset + (x * VOXEL_LENGTH));
+      vertices_buffer.push_back(y * VOXEL_LENGTH);
+      vertices_buffer.push_back(zoffset + ((-z) * VOXEL_LENGTH - VOXEL_LENGTH));
+      break;
+    case 2:
+      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH + VOXEL_LENGTH);
+      vertices_buffer.push_back(y * VOXEL_LENGTH);
+      vertices_buffer.push_back(zoffset + ((-z) * VOXEL_LENGTH - VOXEL_LENGTH));
+      break;
+    case 3:
+      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH + VOXEL_LENGTH);
+      vertices_buffer.push_back(y * VOXEL_LENGTH);
+      vertices_buffer.push_back(zoffset + ((-z) * VOXEL_LENGTH));
+      break;
+    case 4:
+      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH);
+      vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
+      vertices_buffer.push_back(zoffset + (-z * VOXEL_LENGTH));
+      break;
+    case 5:
+      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH);
+      vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
+      vertices_buffer.push_back(zoffset + ((-z) * VOXEL_LENGTH - VOXEL_LENGTH));
+      break;
+    case 6:
+      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH + VOXEL_LENGTH);
+      vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
+      vertices_buffer.push_back(zoffset + ((-z) * VOXEL_LENGTH - VOXEL_LENGTH));
+      break;
+    case 7:
+      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH + VOXEL_LENGTH);
+      vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
+      vertices_buffer.push_back(zoffset + (-z * VOXEL_LENGTH));
+      break;
+    default:
+      PANIC("what?\n");
+      break;
+  }
+}
+
 void Chunk::construct_face(BlockFaces face, int atlas_index, float x, float y,
                            float z) {
-  using fp =
-      void(std::vector<float> & vertices_buffer, float x, float y, float z);
-  static fp* vertices[] = {
-      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
-        vertices_buffer.push_back(x * VOXEL_LENGTH);
-        vertices_buffer.push_back(y * VOXEL_LENGTH);
-        vertices_buffer.push_back(-z * VOXEL_LENGTH);
-      },
-      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
-        vertices_buffer.push_back(x * VOXEL_LENGTH);
-        vertices_buffer.push_back(y * VOXEL_LENGTH);
-        vertices_buffer.push_back((-z) * VOXEL_LENGTH - VOXEL_LENGTH);
-      },
-      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
-        vertices_buffer.push_back(x * VOXEL_LENGTH + VOXEL_LENGTH);
-        vertices_buffer.push_back(y * VOXEL_LENGTH);
-        vertices_buffer.push_back((-z) * VOXEL_LENGTH - VOXEL_LENGTH);
-      },
-      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
-        vertices_buffer.push_back(x * VOXEL_LENGTH + VOXEL_LENGTH);
-        vertices_buffer.push_back(y * VOXEL_LENGTH);
-        vertices_buffer.push_back((-z) * VOXEL_LENGTH);
-      },
-      // repeat
-      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
-        vertices_buffer.push_back(x * VOXEL_LENGTH);
-        vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
-        vertices_buffer.push_back(-z * VOXEL_LENGTH);
-      },
-      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
-        vertices_buffer.push_back(x * VOXEL_LENGTH);
-        vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
-        vertices_buffer.push_back((-z) * VOXEL_LENGTH - VOXEL_LENGTH);
-      },
-      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
-        vertices_buffer.push_back(x * VOXEL_LENGTH + VOXEL_LENGTH);
-        vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
-        vertices_buffer.push_back((-z) * VOXEL_LENGTH - VOXEL_LENGTH);
-      },
-      [](std::vector<float>& vertices_buffer, float x, float y, float z) {
-        vertices_buffer.push_back(x * VOXEL_LENGTH + VOXEL_LENGTH);
-        vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
-        vertices_buffer.push_back(-z * VOXEL_LENGTH);
-      },
-  };
-
   switch ((BlockFaces)face) {
     case BlockFaces::BOTTOM:
-      vertices[2](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(2, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
-      vertices[3](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(3, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_RIGHT, atlas_index);
-      vertices[0](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(0, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
 
-      vertices[0](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(0, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
-      vertices[1](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(1, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_LEFT, atlas_index);
-      vertices[2](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(2, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
       break;
     case BlockFaces::TOP:
-      vertices[7](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(7, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
-      vertices[6](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(6, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_RIGHT, atlas_index);
-      vertices[5](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(5, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
 
-      vertices[5](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(5, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
-      vertices[4](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(4, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_LEFT, atlas_index);
-      vertices[7](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(7, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
       break;
     case BlockFaces::LEFT:
-      vertices[0](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(0, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
-      vertices[4](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(4, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_RIGHT, atlas_index);
-      vertices[5](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(5, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
 
-      vertices[5](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(5, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
-      vertices[1](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(1, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_LEFT, atlas_index);
-      vertices[0](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(0, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
       break;
     case BlockFaces::RIGHT:
-      vertices[2](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(2, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
-      vertices[6](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(6, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_RIGHT, atlas_index);
-      vertices[7](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(7, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
 
-      vertices[7](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(7, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
-      vertices[3](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(3, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_LEFT, atlas_index);
-      vertices[2](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(2, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
       break;
     case BlockFaces::FRONT:
-      vertices[3](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(3, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
-      vertices[7](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(7, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_RIGHT, atlas_index);
-      vertices[4](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(4, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
 
-      vertices[4](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(4, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
-      vertices[0](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(0, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_LEFT, atlas_index);
-      vertices[3](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(3, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
       break;
     case BlockFaces::BACK:
-      vertices[1](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(1, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
-      vertices[5](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(5, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_RIGHT, atlas_index);
-      vertices[6](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(6, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
 
-      vertices[6](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(6, x, y, z);
       emit_texture_coordinates(TexturePosition::TOP_LEFT, atlas_index);
-      vertices[2](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(2, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_LEFT, atlas_index);
-      vertices[1](vertices_buffer, x, y, z);
+      emit_vertex_coordinates(1, x, y, z);
       emit_texture_coordinates(TexturePosition::BOTTOM_RIGHT, atlas_index);
       break;
   }

@@ -30,6 +30,7 @@ ChunkManager::ChunkManager(glm::mat4 projection)
   glTextureStorage2D(tex_atlas, 1, GL_RGBA8, width, height);
   glTextureSubImage2D(tex_atlas, 0, 0, 0, width, height, GL_RGBA,
                       GL_UNSIGNED_BYTE, pixels);
+  glGenerateTextureMipmap(tex_atlas);
   stbi_image_free(pixels);
 
   // vertex attribute configuration
@@ -53,45 +54,50 @@ ChunkManager::ChunkManager(glm::mat4 projection)
 }
 
 void ChunkManager::manage_chunks(glm::vec3 pos) {
-  // algorithm:
-  //  calculate which chunk we are in
-  //  check if surrounding chunks (determined by render distance) are created
-  //    if so then add it to the chunk visibility list
-  //    else create them and add them to the chunk visibility list
-  //  use frustum culling to determined which chunks are actually visible
-  //  render chunks
-
   cpu_bytes_allocated = 0;
-  visible_list.clear();
-  render_list.clear();
-  glm::vec3 world_pos;
+  glm::vec3 world_chunk_pos;
 
   // TODO: please don't do this
-  world_pos.y = 0.0f;
+  world_chunk_pos.y = 0.0f;
   if (pos.x >= 0) {
-    world_pos.x = (int)(pos.x / CHUNK_WIDTH);
+    world_chunk_pos.x = (int)(pos.x / CHUNK_WIDTH);
   } else {
-    world_pos.x = floor(pos.x / CHUNK_WIDTH);
+    world_chunk_pos.x = floor(pos.x / CHUNK_WIDTH);
   }
 
   if (pos.z >= 0) {
-    world_pos.z = ceil(pos.z / CHUNK_DEPTH);
+    world_chunk_pos.z = ceil(pos.z / CHUNK_DEPTH);
   } else {
-    world_pos.z = (int)(pos.z / CHUNK_DEPTH);
+    world_chunk_pos.z = (int)(pos.z / CHUNK_DEPTH);
   }
 
+  if (world_chunk_pos == old_world_pos) {
+    return;
+  }
+
+  visible_list.clear();
+  render_list.clear();
+  old_world_pos = world_chunk_pos;
+
+  // visible chunks pass
   for (int dx = -view_distance; dx <= view_distance; ++dx) {
     for (int dz = -view_distance; dz <= view_distance; ++dz) {
-      auto w =
-          glm::vec3(world_pos.x + (float)dx, 0.0f, world_pos.z + (float)dz);
+      auto w = glm::vec3(world_chunk_pos.x + (float)dx, 0.0f,
+                         world_chunk_pos.z + (float)dz);
 
-      // unordered map implicitly calls default constructor if it needs to
+      if (world_chunks.find(w) == world_chunks.end()) {
+        world_chunks.insert({w, Chunk(w.x * CHUNK_WIDTH, w.z * CHUNK_DEPTH)});
+      }
+
       visible_list.push_back(
-          ChunkDrawData{.model = w, .chunk = &world_chunks[w]});
+          ChunkDrawData{.model = w, .chunk = &world_chunks.at(w)});
     }
   }
 
+  // chunk borders pass
+
   // TODO: frustum culling pass
+  // PRINT("{}\n", visible_list.size());
 
   for (auto& drawable : visible_list) {
     drawable.offset =
@@ -119,43 +125,12 @@ void ChunkManager::render_chunks(glm::vec3 pos, glm::mat4 view) {
   glBindBuffer(GL_ARRAY_BUFFER, vbo);
   glBindTextureUnit(0, tex_atlas);
 
-  // TODO: this data can be stored in the CHunkDrawData
-  /*
-  std::vector<glm::mat4> models;
   std::vector<GLsizei> first;
   std::vector<GLsizei> count;
   for (auto& drawable : visible_list) {
-    models.push_back(
-        glm::translate(glm::mat4(1.0f), drawable.model * (float)CHUNK_WIDTH));
-    first.push_back(offset);
-    offset += drawable.chunk->get_vertices_byte_size() / sizeof(float) / 5;
+    first.push_back(drawable.offset);
     count.push_back((drawable.chunk->get_vertices_byte_size() / sizeof(float)) /
                     attributes_per_vertice);
   }
-  static int UNIFORM_SIZE = 64;
-  shader_program.set_uniform_matrix<UniformMSize::FOUR>(
-      "models", UNIFORM_SIZE, false, glm::value_ptr(models[0]));
   glMultiDrawArrays(GL_TRIANGLES, first.data(), count.data(), first.size());
-  */
-
-  for (auto i = 0; i < visible_list.size(); i++) {
-    auto model = glm::translate(glm::mat4(1.0f), visible_list[i].model * 16.0f);
-    shader_program.set_uniform_matrix<UniformMSize::FOUR>(
-        "model", 1, false, glm::value_ptr(model));
-    glDrawArrays(
-        GL_TRIANGLES, visible_list[i].offset,
-        (visible_list[i].chunk->get_vertices_byte_size() / sizeof(float)) /
-            attributes_per_vertice);
-  }
-  /*
-  for (auto& drawable : visible_list) {
-    auto model = glm::translate(glm::mat4(1.0f), drawable.model * 16.0f);
-    shader_program.set_uniform_matrix<UniformMSize::FOUR>(
-        "model", 1, false, glm::value_ptr(model));
-    glDrawArrays(GL_TRIANGLES, offset,
-                 (drawable.chunk->get_vertices_byte_size() / sizeof(float)) /
-                     attributes_per_vertice);
-    offset += drawable.chunk->get_vertices_byte_size();
-  }
-*/
 }
