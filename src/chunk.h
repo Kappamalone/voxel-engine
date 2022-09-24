@@ -7,9 +7,8 @@
 #include <unordered_map>
 #include <vector>
 
-#define STB_IMAGE_STATIC
-#define STB_IMAGE_IMPLEMENTATION
-#include "stb_image.h"
+#define GLM_ENABLE_EXPERIMENTAL
+#include "glm/gtx/hash.hpp"
 
 static constexpr int CHUNK_WIDTH = 16;
 static constexpr int CHUNK_DEPTH = 16;
@@ -33,23 +32,18 @@ private:
   enum class BlockFaces { BOTTOM = 0, TOP, LEFT, RIGHT, BACK, FRONT };
   enum class TexturePosition { BOTTOM_LEFT, BOTTOM_RIGHT, TOP_LEFT, TOP_RIGHT };
 
-  // for culling chunk boundaries
-  Chunk* front_chunk = nullptr;
-  Chunk* back_chunk = nullptr;
-  Chunk* left_chunk = nullptr;
-  Chunk* right_chunk = nullptr;
-
+  std::unordered_map<glm::vec3, Chunk>& world_chunks;
   std::vector<Voxel> voxels;
   std::vector<float> vertices_buffer;
   int tex_atlas_rows = 16;
   float xoffset;
   float zoffset;
+  bool mesh_created = false;
 
   void emit_vertex_coordinates(int index, float x, float y, float z);
   void emit_texture_coordinates(TexturePosition position, int atlas_index);
   void construct_face(BlockFaces face, int atlas_index, float x, float y,
                       float z);
-  void create_mesh();
   void create_voxels();
 
   Voxel& get_voxel(int x, int y, int z) {
@@ -66,7 +60,9 @@ private:
   }
 
 public:
-  Chunk(float xoffset, float zoffset);
+  Chunk(std::unordered_map<glm::vec3, Chunk>& world_chunks, float xoffset,
+        float zoffset);
+  void create_mesh();
 
   float* get_vertices_data() {
     return vertices_buffer.data();
@@ -74,6 +70,10 @@ public:
 
   int get_vertices_byte_size() {
     return vertices_buffer.size() * sizeof(float);
+  }
+
+  bool initial_mesh_created() const {
+    return mesh_created;
   }
 
 private:

@@ -3,12 +3,12 @@
 #include "common.h"
 #include <algorithm>
 #include <cmath>
+#include <unordered_map>
 
-Chunk::Chunk(float xoffset, float zoffset)
-    : xoffset(xoffset), zoffset(zoffset) {
-
+Chunk::Chunk(std::unordered_map<glm::vec3, Chunk>& world_chunks, float xoffset,
+             float zoffset)
+    : world_chunks(world_chunks), xoffset(xoffset), zoffset(zoffset) {
   create_voxels();
-  create_mesh();
 }
 
 void Chunk::create_voxels() {
@@ -32,6 +32,8 @@ void Chunk::create_voxels() {
     }
   }
 }
+
+// TODO: maybe unspagettify the mesh creation a little *sob*
 
 // TODO: use an enum here
 void Chunk::emit_vertex_coordinates(int index, float x, float y, float z) {
@@ -78,6 +80,35 @@ void Chunk::emit_vertex_coordinates(int index, float x, float y, float z) {
       break;
     default:
       PANIC("what?\n");
+      break;
+  }
+}
+
+void Chunk::emit_texture_coordinates(TexturePosition position,
+                                     int atlas_index) {
+  int column = atlas_index % tex_atlas_rows;
+  int row = atlas_index / tex_atlas_rows;
+  float xoff = (float)column / (float)tex_atlas_rows;
+  float yoff = (float)row / (float)tex_atlas_rows;
+
+  // NOTE: tex coords are upside down to account for uv coords starting at
+  // bottom left
+  switch (position) {
+    case TexturePosition::BOTTOM_LEFT:
+      vertices_buffer.push_back(0.f + xoff);
+      vertices_buffer.push_back(1.f / (float)tex_atlas_rows + yoff);
+      break;
+    case TexturePosition::BOTTOM_RIGHT:
+      vertices_buffer.push_back(1.f / (float)tex_atlas_rows + xoff);
+      vertices_buffer.push_back(1.f / (float)tex_atlas_rows + yoff);
+      break;
+    case TexturePosition::TOP_LEFT:
+      vertices_buffer.push_back(0.f + xoff);
+      vertices_buffer.push_back(0.f + yoff);
+      break;
+    case TexturePosition::TOP_RIGHT:
+      vertices_buffer.push_back(1.f / (float)tex_atlas_rows + xoff);
+      vertices_buffer.push_back(0.f + yoff);
       break;
   }
 }
@@ -178,35 +209,6 @@ void Chunk::construct_face(BlockFaces face, int atlas_index, float x, float y,
   }
 }
 
-void Chunk::emit_texture_coordinates(TexturePosition position,
-                                     int atlas_index) {
-  int column = atlas_index % tex_atlas_rows;
-  int row = atlas_index / tex_atlas_rows;
-  float xoff = (float)column / (float)tex_atlas_rows;
-  float yoff = (float)row / (float)tex_atlas_rows;
-
-  // NOTE: tex coords are upside down to account for uv coords starting at
-  // bottom left
-  switch (position) {
-    case TexturePosition::BOTTOM_LEFT:
-      vertices_buffer.push_back(0.f + xoff);
-      vertices_buffer.push_back(1.f / (float)tex_atlas_rows + yoff);
-      break;
-    case TexturePosition::BOTTOM_RIGHT:
-      vertices_buffer.push_back(1.f / (float)tex_atlas_rows + xoff);
-      vertices_buffer.push_back(1.f / (float)tex_atlas_rows + yoff);
-      break;
-    case TexturePosition::TOP_LEFT:
-      vertices_buffer.push_back(0.f + xoff);
-      vertices_buffer.push_back(0.f + yoff);
-      break;
-    case TexturePosition::TOP_RIGHT:
-      vertices_buffer.push_back(1.f / (float)tex_atlas_rows + xoff);
-      vertices_buffer.push_back(0.f + yoff);
-      break;
-  }
-}
-
 void Chunk::create_mesh() {
 
   // algorithm:
@@ -214,6 +216,10 @@ void Chunk::create_mesh() {
   //  borders an air block, if so add that face to the mesh, else ignore
   //
   //  TODO: handle chunk border vertices culling
+  //  -> for a view distance of eg 1, generate voxel data for view distance + 1,
+  //  then iterate through view distance blocks and generate meshes (and setting
+  //  mesh generated flag)
+  mesh_created = true;
 
   for (auto y = 0; y < CHUNK_HEIGHT; y++) {
     for (auto z = 0; z < CHUNK_DEPTH; z++) {
@@ -254,6 +260,13 @@ void Chunk::create_mesh() {
             case BlockFaces::LEFT: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (x == 0) {
+                auto n_chunk_pos =
+                    glm::vec3(xoffset / 16.0f - 1, 0.0f, zoffset / 16.0f);
+                if (!world_chunks.at(n_chunk_pos)
+                         .is_air_voxel(CHUNK_WIDTH - 1, y, z)) {
+                  continue;
+                }
+
                 construct_face(BlockFaces::LEFT, tex_atlas_index, x, y, z);
                 continue;
               }
@@ -265,6 +278,12 @@ void Chunk::create_mesh() {
             case BlockFaces::RIGHT: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (x == CHUNK_WIDTH - 1) {
+                auto n_chunk_pos =
+                    glm::vec3(xoffset / 16.0f + 1, 0.0f, zoffset / 16.0f);
+                if (!world_chunks.at(n_chunk_pos).is_air_voxel(0, y, z)) {
+                  continue;
+                }
+
                 construct_face(BlockFaces::RIGHT, tex_atlas_index, x, y, z);
                 continue;
               }
@@ -276,6 +295,12 @@ void Chunk::create_mesh() {
             case BlockFaces::FRONT: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (z == 0) {
+                auto n_chunk_pos =
+                    glm::vec3(xoffset / 16.0f, 0.0f, zoffset / 16.0f + 1);
+                if (!world_chunks.at(n_chunk_pos)
+                         .is_air_voxel(x, y, CHUNK_DEPTH - 1)) {
+                  continue;
+                }
                 construct_face(BlockFaces::FRONT, tex_atlas_index, x, y, z);
                 continue;
               }
@@ -287,6 +312,11 @@ void Chunk::create_mesh() {
             case BlockFaces::BACK: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (z == CHUNK_DEPTH - 1) {
+                auto n_chunk_pos =
+                    glm::vec3(xoffset / 16.0f, 0.0f, zoffset / 16.0f - 1);
+                if (!world_chunks.at(n_chunk_pos).is_air_voxel(x, y, 0)) {
+                  continue;
+                }
                 construct_face(BlockFaces::BACK, tex_atlas_index, x, y, z);
                 continue;
               }

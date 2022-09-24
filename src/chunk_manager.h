@@ -1,8 +1,9 @@
 #pragma once
 #include "chunk.h"
 
-#define GLM_ENABLE_EXPERIMENTAL
-#include "glm/gtx/hash.hpp"
+#define STB_IMAGE_STATIC
+#define STB_IMAGE_IMPLEMENTATION
+#include "stb_image.h"
 
 struct ChunkDrawData {
   glm::vec3 model;
@@ -29,7 +30,7 @@ private:
 
   void manage_chunks(glm::vec3 pos);
 
-  int view_distance = 1;
+  int view_distance = 6;
 
 public:
   ChunkManager(glm::mat4 projection);

@@ -75,26 +75,43 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
     return;
   }
 
+  // NOTE: there are infinitely better ways to handle chunks than to
+  // rerender each of them each frame
   visible_list.clear();
   render_list.clear();
   old_world_pos = world_chunk_pos;
 
-  // visible chunks pass
+  // NOTE: we create voxel data for radius view_distance+1, but only generate
+  // voxel information for view_distance in order to cull chunk borders
+
+  // voxel creation pass
+  for (int dx = -view_distance - 1; dx <= view_distance + 1; ++dx) {
+    for (int dz = -view_distance - 1; dz <= view_distance + 1; ++dz) {
+      auto w = glm::vec3(world_chunk_pos.x + (float)dx, 0.0f,
+                         world_chunk_pos.z + (float)dz);
+
+      if (world_chunks.find(w) == world_chunks.end()) {
+        world_chunks.insert(
+            {w, Chunk(world_chunks, w.x * CHUNK_WIDTH, w.z * CHUNK_DEPTH)});
+      }
+    }
+  }
+
+  // visible chunks pass and mesh creation pass
   for (int dx = -view_distance; dx <= view_distance; ++dx) {
     for (int dz = -view_distance; dz <= view_distance; ++dz) {
       auto w = glm::vec3(world_chunk_pos.x + (float)dx, 0.0f,
                          world_chunk_pos.z + (float)dz);
 
-      if (world_chunks.find(w) == world_chunks.end()) {
-        world_chunks.insert({w, Chunk(w.x * CHUNK_WIDTH, w.z * CHUNK_DEPTH)});
+      auto& chunk = world_chunks.at(w);
+      if (!chunk.initial_mesh_created()) {
+        chunk.create_mesh();
       }
 
       visible_list.push_back(
           ChunkDrawData{.model = w, .chunk = &world_chunks.at(w)});
     }
   }
-
-  // chunk borders pass
 
   // TODO: frustum culling pass
   // PRINT("{}\n", visible_list.size());
