@@ -4,8 +4,8 @@
 #include <cmath>
 #include <unordered_map>
 
-Chunk::Chunk(std::unordered_map<glm::vec3, Chunk>& world_chunks, float xoffset,
-             float zoffset, siv::PerlinNoise& perlin_noise)
+Chunk::Chunk(std::unordered_map<ChunkPos, Chunk>& world_chunks, int xoffset,
+             int zoffset, siv::PerlinNoise& perlin_noise)
     : world_chunks(world_chunks), xoffset(xoffset), zoffset(zoffset),
       perlin_noise(perlin_noise) {
   create_voxels();
@@ -271,8 +271,7 @@ void Chunk::create_mesh() {
             case BlockFaces::LEFT: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (x == 0) {
-                auto n_chunk_pos =
-                    glm::vec3(xoffset / 16.0f - 1, 0.0f, zoffset / 16.0f);
+                auto n_chunk_pos = ChunkPos{xoffset / 16 - 1, zoffset / 16};
                 if (!world_chunks.at(n_chunk_pos)
                          .is_air_voxel(CHUNK_WIDTH - 1, y, z)) {
                   continue;
@@ -289,8 +288,7 @@ void Chunk::create_mesh() {
             case BlockFaces::RIGHT: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (x == CHUNK_WIDTH - 1) {
-                auto n_chunk_pos =
-                    glm::vec3(xoffset / 16.0f + 1, 0.0f, zoffset / 16.0f);
+                auto n_chunk_pos = ChunkPos{xoffset / 16 + 1, zoffset / 16};
                 if (!world_chunks.at(n_chunk_pos).is_air_voxel(0, y, z)) {
                   continue;
                 }
@@ -306,8 +304,7 @@ void Chunk::create_mesh() {
             case BlockFaces::FRONT: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (z == 0) {
-                auto n_chunk_pos =
-                    glm::vec3(xoffset / 16.0f, 0.0f, zoffset / 16.0f + 1);
+                auto n_chunk_pos = ChunkPos{xoffset / 16, zoffset / 16 + 1};
                 if (!world_chunks.at(n_chunk_pos)
                          .is_air_voxel(x, y, CHUNK_DEPTH - 1)) {
                   continue;
@@ -323,8 +320,7 @@ void Chunk::create_mesh() {
             case BlockFaces::BACK: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (z == CHUNK_DEPTH - 1) {
-                auto n_chunk_pos =
-                    glm::vec3(xoffset / 16.0f, 0.0f, zoffset / 16.0f - 1);
+                auto n_chunk_pos = ChunkPos{xoffset / 16, zoffset / 16 - 1};
                 if (!world_chunks.at(n_chunk_pos).is_air_voxel(x, y, 0)) {
                   continue;
                 }

@@ -1,18 +1,11 @@
 #pragma once
-#include "PerlinNoise.hpp"
 #include "chunk.h"
 
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
-struct ChunkPos {
-  int x;
-  int z;
-};
-
 struct ChunkDrawData {
-  glm::vec3 model;
   int offset;
   Chunk* chunk;
 };
@@ -29,14 +22,14 @@ private:
   GLuint tex_atlas;
   siv::PerlinNoise perlin_noise;
 
-  glm::vec3 old_world_pos;
-  std::unordered_map<glm::vec3, Chunk> world_chunks;
+  ChunkPos old_world_pos;
+  std::unordered_map<ChunkPos, Chunk> world_chunks;
   std::vector<ChunkDrawData> visible_list;
   std::vector<ChunkDrawData> render_list;
 
   void manage_chunks(glm::vec3 pos);
 
-  int view_distance = 14;
+  int view_distance = 6;
 
 public:
   ChunkManager(glm::mat4 projection);
