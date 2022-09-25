@@ -2,7 +2,9 @@
 #include <iostream>
 
 ChunkManager::ChunkManager(glm::mat4 projection)
-    : shader_program(chunk_vert, chunk_frag, ShaderSourceType::STRING) {
+    : shader_program(chunk_vert, chunk_frag, ShaderSourceType::STRING),
+      perlin_noise(5000) {
+
   shader_program.set_uniform_matrix<UniformMSize::FOUR>(
       "projection", 1, false, glm::value_ptr(projection));
 
@@ -19,16 +21,15 @@ ChunkManager::ChunkManager(glm::mat4 projection)
   // 256x256
   int width, height, channels;
   // stbi_set_flip_vertically_on_load(true);
-  unsigned char* pixels =
-      stbi_load("../src/assets/terrain.png", &width, &height, &channels, 0);
+  unsigned char* pixels = stbi_load("../src/assets/terrain_2071786.jpg", &width,
+                                    &height, &channels, 0);
   if (!pixels) {
     PANIC("Cannot find texture!\n");
   }
   PRINT("[DEBUG] Texture atlas (width, height, channels): ({}, {}, {})\n",
         width, height, channels);
-  tex_atlas_rows = std::sqrt(width);
-  glTextureStorage2D(tex_atlas, 1, GL_RGBA8, width, height);
-  glTextureSubImage2D(tex_atlas, 0, 0, 0, width, height, GL_RGBA,
+  glTextureStorage2D(tex_atlas, 1, GL_RGB8, width, height);
+  glTextureSubImage2D(tex_atlas, 0, 0, 0, width, height, GL_RGB,
                       GL_UNSIGNED_BYTE, pixels);
   glGenerateTextureMipmap(tex_atlas);
   stbi_image_free(pixels);
@@ -91,8 +92,8 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
                          world_chunk_pos.z + (float)dz);
 
       if (world_chunks.find(w) == world_chunks.end()) {
-        world_chunks.insert(
-            {w, Chunk(world_chunks, w.x * CHUNK_WIDTH, w.z * CHUNK_DEPTH)});
+        world_chunks.insert({w, Chunk(world_chunks, w.x * CHUNK_WIDTH,
+                                      w.z * CHUNK_DEPTH, perlin_noise)});
       }
     }
   }

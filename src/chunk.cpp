@@ -1,13 +1,13 @@
 #include "chunk.h"
-#include "PerlinNoise.hpp"
 #include "common.h"
 #include <algorithm>
 #include <cmath>
 #include <unordered_map>
 
 Chunk::Chunk(std::unordered_map<glm::vec3, Chunk>& world_chunks, float xoffset,
-             float zoffset)
-    : world_chunks(world_chunks), xoffset(xoffset), zoffset(zoffset) {
+             float zoffset, siv::PerlinNoise& perlin_noise)
+    : world_chunks(world_chunks), xoffset(xoffset), zoffset(zoffset),
+      perlin_noise(perlin_noise) {
   create_voxels();
 }
 
@@ -16,17 +16,27 @@ void Chunk::create_voxels() {
   std::fill(voxels.begin(), voxels.end(), Voxel{.voxel_type = VoxelType::AIR});
   for (auto z = 0; z < CHUNK_DEPTH; z++) {
     for (auto x = 0; x < CHUNK_WIDTH; x++) {
-      static const siv::PerlinNoise::seed_type seed = 123456u;
-      static const siv::PerlinNoise perlin{seed};
-      int height =
-          (perlin.octave2D((xoffset + x) * 0.01, (zoffset + -z) * 0.01, 2) +
+      static constexpr int WORLD_HEIGHT = 64;
+      static constexpr int SURFACE_HEIGHT = 40;
+      static const float PERLIN_SCALE = 0.02f;
+      static const float PERLIN_OCTAVES = 4;
+      static const float PERLIN_PERSISTENCE = 0.5;
+
+      float perlin_value =
+          (perlin_noise.octave2D((xoffset + x) * PERLIN_SCALE,
+                                 (zoffset - z) * PERLIN_SCALE, PERLIN_OCTAVES,
+                                 PERLIN_PERSISTENCE) +
            1) /
-          2.0f * WORLD_HEIGHT;
+          2.0f;
+      int height = WORLD_HEIGHT + perlin_value * SURFACE_HEIGHT;
 
       for (auto y = 0; y < height; y++) {
-        set_voxel(x, y, z, VoxelType::DIRT);
-        if (y + 1 == height) {
+        if (y >= height - 1) {
           set_voxel(x, y, z, VoxelType::GRASS);
+        } else if (y >= height - 3) {
+          set_voxel(x, y, z, VoxelType::DIRT);
+        } else {
+          set_voxel(x, y, z, VoxelType::STONE);
         }
       }
     }
@@ -86,6 +96,7 @@ void Chunk::emit_vertex_coordinates(int index, float x, float y, float z) {
 
 void Chunk::emit_texture_coordinates(TexturePosition position,
                                      int atlas_index) {
+  static const int tex_atlas_rows = 16;
   int column = atlas_index % tex_atlas_rows;
   int row = atlas_index / tex_atlas_rows;
   float xoff = (float)column / (float)tex_atlas_rows;

@@ -5,7 +5,8 @@ something about texture coordinates? (texture arrays)
 greedy meshing
 
 chunk manager:
-frustum culling using stuff like octrees
-chunk boundary mesh culling
+frustum culling using stuff like octrees (octree not needed)
+multithreaded voxel 
 
 chunk memory allocator?
+ray intersections for block breaking?

@@ -1,4 +1,5 @@
 #pragma once
+#include "PerlinNoise.hpp"
 #include "shader_program.h"
 #include <glad/glad.h>
 #include <glm/glm.hpp>
@@ -13,13 +14,27 @@
 static constexpr int CHUNK_WIDTH = 16;
 static constexpr int CHUNK_DEPTH = 16;
 static constexpr int CHUNK_HEIGHT = 256;
-static constexpr int WORLD_HEIGHT = 64;
 static constexpr float VOXEL_LENGTH = 1.0f;
 
 enum class VoxelType {
   AIR,
   DIRT,
   GRASS,
+  STONE,
+};
+enum class BlockFaces {
+  BOTTOM = 0,
+  TOP,
+  LEFT,
+  RIGHT,
+  BACK,
+  FRONT,
+};
+enum class TexturePosition {
+  BOTTOM_LEFT,
+  BOTTOM_RIGHT,
+  TOP_LEFT,
+  TOP_RIGHT,
 };
 
 struct Voxel {
@@ -29,13 +44,11 @@ struct Voxel {
 // NOTE: uses LH coordinate system for storage of local voxel positions
 class Chunk {
 private:
-  enum class BlockFaces { BOTTOM = 0, TOP, LEFT, RIGHT, BACK, FRONT };
-  enum class TexturePosition { BOTTOM_LEFT, BOTTOM_RIGHT, TOP_LEFT, TOP_RIGHT };
-
   std::unordered_map<glm::vec3, Chunk>& world_chunks;
+  siv::PerlinNoise& perlin_noise;
+
   std::vector<Voxel> voxels;
   std::vector<float> vertices_buffer;
-  int tex_atlas_rows = 16;
   float xoffset;
   float zoffset;
   bool mesh_created = false;
@@ -61,7 +74,7 @@ private:
 
 public:
   Chunk(std::unordered_map<glm::vec3, Chunk>& world_chunks, float xoffset,
-        float zoffset);
+        float zoffset, siv::PerlinNoise& perlin_noise);
   void create_mesh();
 
   float* get_vertices_data() {
@@ -88,6 +101,16 @@ private:
         {BlockFaces::RIGHT, 3},
         {BlockFaces::FRONT, 3},
         {BlockFaces::BACK, 3},
+        }
+      },
+      {VoxelType::STONE,
+      {
+        {BlockFaces::BOTTOM, 1},
+        {BlockFaces::TOP, 1},
+        {BlockFaces::LEFT, 1},
+        {BlockFaces::RIGHT, 1},
+        {BlockFaces::FRONT, 1},
+        {BlockFaces::BACK, 1},
         }
       },
       {VoxelType::DIRT,
