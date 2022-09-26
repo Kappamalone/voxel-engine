@@ -1,10 +1,9 @@
 #include "voxel_engine.h"
 
 VoxelEngine::VoxelEngine(int viewport_width, int viewport_height)
-    : window(viewport_width, viewport_height, "TEMPLATE"), player_camera(),
-      chunk_manager(glm::perspective(glm::radians(45.0f),
-                                     window.get_viewport_aspect_ratio(), 0.1f,
-                                     300.0f)) {
+    : window(viewport_width, viewport_height, "TEMPLATE"),
+      player_camera(window.get_viewport_aspect_ratio()),
+      chunk_manager(player_camera.get_projection_matrix()) {
   glfwSetInputMode(window.get_window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 

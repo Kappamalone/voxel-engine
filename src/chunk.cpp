@@ -10,14 +10,6 @@ Chunk::Chunk(std::unordered_map<ChunkPos, Chunk>& world_chunks, int xoffset,
     : world_chunks(world_chunks), xoffset(xoffset), zoffset(zoffset),
       perlin_noise(perlin_noise) {
   create_voxels();
-  /*
-  LerpPoints lerp_points;
-  lerp_points.add_point(Point(-1.f, -1.f));
-  lerp_points.add_point(Point(1.f, 1.f));
-  lerp_points.print_points();
-  PRINT("result: {}\n", lerp_points.interpolate(0.75));
-  PANIC("");
-  */
 }
 
 void Chunk::create_voxels() {
@@ -69,44 +61,44 @@ void Chunk::create_voxels() {
 void Chunk::emit_vertex_coordinates(int index, float x, float y, float z) {
   switch (index) {
     case 0:
-      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH);
-      vertices_buffer.push_back(y * VOXEL_LENGTH);
-      vertices_buffer.push_back(zoffset + (-z * VOXEL_LENGTH));
+      vertices_buffer.push_back(xoffset + x);
+      vertices_buffer.push_back(y);
+      vertices_buffer.push_back(zoffset - z);
       break;
     case 1:
-      vertices_buffer.push_back(xoffset + (x * VOXEL_LENGTH));
-      vertices_buffer.push_back(y * VOXEL_LENGTH);
-      vertices_buffer.push_back(zoffset + ((-z) * VOXEL_LENGTH - VOXEL_LENGTH));
+      vertices_buffer.push_back(xoffset + x);
+      vertices_buffer.push_back(y);
+      vertices_buffer.push_back(zoffset - z - 1.0f);
       break;
     case 2:
-      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH + VOXEL_LENGTH);
-      vertices_buffer.push_back(y * VOXEL_LENGTH);
-      vertices_buffer.push_back(zoffset + ((-z) * VOXEL_LENGTH - VOXEL_LENGTH));
+      vertices_buffer.push_back(xoffset + x + 1.0f);
+      vertices_buffer.push_back(y);
+      vertices_buffer.push_back(zoffset - z - 1.0f);
       break;
     case 3:
-      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH + VOXEL_LENGTH);
-      vertices_buffer.push_back(y * VOXEL_LENGTH);
-      vertices_buffer.push_back(zoffset + ((-z) * VOXEL_LENGTH));
+      vertices_buffer.push_back(xoffset + x + 1.0f);
+      vertices_buffer.push_back(y);
+      vertices_buffer.push_back(zoffset - z);
       break;
     case 4:
-      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH);
-      vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
-      vertices_buffer.push_back(zoffset + (-z * VOXEL_LENGTH));
+      vertices_buffer.push_back(xoffset + x);
+      vertices_buffer.push_back(y + 1.0f);
+      vertices_buffer.push_back(zoffset - z);
       break;
     case 5:
-      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH);
-      vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
-      vertices_buffer.push_back(zoffset + ((-z) * VOXEL_LENGTH - VOXEL_LENGTH));
+      vertices_buffer.push_back(xoffset + x);
+      vertices_buffer.push_back(y + 1.0f);
+      vertices_buffer.push_back(zoffset - z - 1.0f);
       break;
     case 6:
-      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH + VOXEL_LENGTH);
-      vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
-      vertices_buffer.push_back(zoffset + ((-z) * VOXEL_LENGTH - VOXEL_LENGTH));
+      vertices_buffer.push_back(xoffset + x + 1.0f);
+      vertices_buffer.push_back(y + 1.0f);
+      vertices_buffer.push_back(zoffset - z - 1.0f);
       break;
     case 7:
-      vertices_buffer.push_back(xoffset + x * VOXEL_LENGTH + VOXEL_LENGTH);
-      vertices_buffer.push_back(y * VOXEL_LENGTH + VOXEL_LENGTH);
-      vertices_buffer.push_back(zoffset + (-z * VOXEL_LENGTH));
+      vertices_buffer.push_back(xoffset + x + 1.0f);
+      vertices_buffer.push_back(y + 1.0f);
+      vertices_buffer.push_back(zoffset - z);
       break;
     default:
       PANIC("what?\n");

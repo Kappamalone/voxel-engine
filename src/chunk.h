@@ -11,7 +11,7 @@
 static constexpr int CHUNK_WIDTH = 16;
 static constexpr int CHUNK_DEPTH = 16;
 static constexpr int CHUNK_HEIGHT = 256;
-static constexpr float VOXEL_LENGTH = 1.0f; // TODO: fixme
+static constexpr float VOXEL_LENGTH = 0.1f; // TODO: fixme
 
 enum class VoxelType {
   AIR,

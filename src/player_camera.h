@@ -18,13 +18,14 @@ private:
   float yaw = -90.0f;
   float pitch = 0.0f;
 
+  glm::mat4 projection;
   glm::mat4 view;
 
-  float camera_speed = 10.f;
+  float camera_speed = 40.f;
   float camera_mouse_sensitivity = 0.1f;
 
 public:
-  PlayerCamera();
+  PlayerCamera(float aspect_ratio);
   void process_input(Direction direction, float delta_time);
   void process_mouse_input(float xoffset, float yoffset);
   void calculate_camera_vectors();
@@ -32,6 +33,10 @@ public:
   glm::mat4* get_view_matrix() {
     view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
     return &view;
+  }
+
+  glm::mat4* get_projection_matrix() {
+    return &projection;
   }
 
   glm::vec3 get_player_pos() {

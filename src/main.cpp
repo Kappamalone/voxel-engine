@@ -22,6 +22,7 @@ ray intersections for block breaking?
 TODOs:
 how to generate structures like trees (done in chunk manager?)
 water mesh generation
+also i should probably fix submodules
  */
 
 int main() {

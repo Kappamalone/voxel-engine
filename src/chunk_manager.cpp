@@ -1,12 +1,13 @@
 #include "chunk_manager.h"
+#include "chunk.h"
 #include <random>
 
-ChunkManager::ChunkManager(glm::mat4 projection)
+ChunkManager::ChunkManager(glm::mat4* projection)
     : shader_program(chunk_vert, chunk_frag, ShaderSourceType::STRING),
       perlin_noise(random_seed()) {
 
   shader_program.set_uniform_matrix<UniformMSize::FOUR>(
-      "projection", 1, false, glm::value_ptr(projection));
+      "projection", 1, false, glm::value_ptr(*projection));
 
   // texture atlas
   // TODO: abstract this away into a class?
@@ -150,10 +151,11 @@ void ChunkManager::render_chunks(glm::vec3 pos, glm::mat4 view) {
   glMultiDrawArrays(GL_TRIANGLES, first.data(), count.data(), first.size());
 }
 
-double ChunkManager::random_seed() {
+uint32_t ChunkManager::random_seed() {
   std::uniform_real_distribution<double> unif(0, 1);
   std::random_device rand_dev;
   std::mt19937 rand_engine(rand_dev());
-  double x = unif(rand_engine) * 0xffff'ffff;
+  uint32_t x = unif(rand_engine) * 0xffff'ffff;
+  PRINT("[DEBUG] seed: {}\n", x);
   return x;
 }
