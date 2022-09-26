@@ -8,6 +8,7 @@ SET(SOURCES
     player_camera.cpp
     chunk_manager.h
     chunk_manager.cpp
+    lerp_points.h
 )
 
 add_subdirectory(common)

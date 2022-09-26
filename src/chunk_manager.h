@@ -29,7 +29,9 @@ private:
 
   void manage_chunks(glm::vec3 pos);
 
-  int view_distance = 6;
+  int view_distance = 10;
+
+  static double random_seed();
 
 public:
   ChunkManager(glm::mat4 projection);

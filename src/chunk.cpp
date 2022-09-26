@@ -1,5 +1,6 @@
 #include "chunk.h"
 #include "common.h"
+#include "lerp_points.h"
 #include <algorithm>
 #include <cmath>
 #include <unordered_map>
@@ -9,31 +10,50 @@ Chunk::Chunk(std::unordered_map<ChunkPos, Chunk>& world_chunks, int xoffset,
     : world_chunks(world_chunks), xoffset(xoffset), zoffset(zoffset),
       perlin_noise(perlin_noise) {
   create_voxels();
+  /*
+  LerpPoints lerp_points;
+  lerp_points.add_point(Point(-1.f, -1.f));
+  lerp_points.add_point(Point(1.f, 1.f));
+  lerp_points.print_points();
+  PRINT("result: {}\n", lerp_points.interpolate(0.75));
+  PANIC("");
+  */
 }
 
 void Chunk::create_voxels() {
   voxels.resize(CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT);
   std::fill(voxels.begin(), voxels.end(), Voxel{.voxel_type = VoxelType::AIR});
+
+  LerpPoints lerp_points(Point(-1.0f, 60), Point(1.0f, 120));
+
   for (auto z = 0; z < CHUNK_DEPTH; z++) {
     for (auto x = 0; x < CHUNK_WIDTH; x++) {
-      static constexpr int WORLD_HEIGHT = 64;
-      static constexpr int SURFACE_HEIGHT = 40;
-      static const float PERLIN_SCALE = 0.02f;
-      static const float PERLIN_OCTAVES = 4;
-      static const float PERLIN_PERSISTENCE = 0.5;
+      static constexpr int WATER_THRESHOLD = 90;
+      static constexpr float PERLIN_SCALE = 0.035f;
+      static constexpr float PERLIN_OCTAVES = 3;
+      static constexpr float PERLIN_PERSISTENCE = 0.5;
 
-      float perlin_value =
-          (perlin_noise.octave2D((xoffset + x) * PERLIN_SCALE,
-                                 (zoffset - z) * PERLIN_SCALE, PERLIN_OCTAVES,
-                                 PERLIN_PERSISTENCE) +
-           1) /
-          2.0f;
-      int height = WORLD_HEIGHT + perlin_value * SURFACE_HEIGHT;
+      double perlin_value = (perlin_noise.octave2D_11(
+          (xoffset + x) * PERLIN_SCALE, (zoffset - z) * PERLIN_SCALE,
+          PERLIN_OCTAVES, PERLIN_PERSISTENCE));
+      int height = lerp_points.interpolate(perlin_value);
 
       for (auto y = 0; y < height; y++) {
-        if (y >= height - 1) {
+        /*
+        TODO: figure out how squishification works
+        static constexpr double DENSITY_THRESHOLD = 0.35f;
+        double density = perlin_noise.octave3D_11(
+            (xoffset + x) * PERLIN_SCALE, y * PERLIN_SCALE,
+            (zoffset - z) * PERLIN_SCALE, PERLIN_OCTAVES, PERLIN_PERSISTENCE);
+        if (density >= DENSITY_THRESHOLD) {
           set_voxel(x, y, z, VoxelType::GRASS);
-        } else if (y >= height - 3) {
+        }
+        */
+        if (y <= WATER_THRESHOLD) {
+          set_voxel(x, y, z, VoxelType::DIRT);
+        } else if (y >= height - 1) {
+          set_voxel(x, y, z, VoxelType::GRASS);
+        } else if (y >= height - 5) {
           set_voxel(x, y, z, VoxelType::DIRT);
         } else {
           set_voxel(x, y, z, VoxelType::STONE);
