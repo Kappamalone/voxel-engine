@@ -8,6 +8,8 @@ SET(SOURCES
     player_camera.cpp
     chunk_manager.h
     chunk_manager.cpp
+    frustum.h
+    frustum.cpp
     lerp_points.h
 )
 

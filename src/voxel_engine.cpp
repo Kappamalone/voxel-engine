@@ -2,8 +2,8 @@
 
 VoxelEngine::VoxelEngine(int viewport_width, int viewport_height)
     : window(viewport_width, viewport_height, "TEMPLATE"),
-      player_camera(window.get_viewport_aspect_ratio()),
-      chunk_manager(player_camera.get_projection_matrix()) {
+      player_camera(45.0f, window.get_viewport_aspect_ratio(), 0.1f, 1000.0f),
+      chunk_manager(player_camera) {
   glfwSetInputMode(window.get_window(), GLFW_CURSOR, GLFW_CURSOR_DISABLED);
 }
 
@@ -35,8 +35,7 @@ void VoxelEngine::run() {
     glClearColor(0.2, 0.3, 0.3, 1.0);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-    chunk_manager.render_chunks(player_camera.get_player_pos(),
-                                *player_camera.get_view_matrix());
+    chunk_manager.render_chunks();
 
     // order is T * R * S to get SRT transformation for model matrix
     // order is P * V * M to get MVP transformation to clip space, then

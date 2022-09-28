@@ -1,5 +1,7 @@
 #pragma once
 #include "chunk.h"
+#include "frustum.h"
+#include "player_camera.h"
 
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
@@ -12,6 +14,8 @@ struct ChunkDrawData {
 
 class ChunkManager {
 private:
+  PlayerCamera& player_camera;
+
   GLuint vao;
   GLuint vbo;
   int cpu_bytes_allocated = 0;
@@ -34,6 +38,6 @@ private:
   static uint32_t random_seed();
 
 public:
-  ChunkManager(glm::mat4* projection);
-  void render_chunks(glm::vec3 pos, glm::mat4 view);
+  ChunkManager(PlayerCamera& player_camera);
+  void render_chunks();
 };

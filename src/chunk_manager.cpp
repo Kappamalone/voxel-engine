@@ -2,12 +2,14 @@
 #include "chunk.h"
 #include <random>
 
-ChunkManager::ChunkManager(glm::mat4* projection)
-    : shader_program(chunk_vert, chunk_frag, ShaderSourceType::STRING),
+ChunkManager::ChunkManager(PlayerCamera& player_camera)
+    : player_camera(player_camera),
+      shader_program(chunk_vert, chunk_frag, ShaderSourceType::STRING),
       perlin_noise(random_seed()) {
 
   shader_program.set_uniform_matrix<UniformMSize::FOUR>(
-      "projection", 1, false, glm::value_ptr(*projection));
+      "projection", 1, false,
+      glm::value_ptr(*player_camera.get_projection_matrix()));
 
   // texture atlas
   // TODO: abstract this away into a class?
@@ -113,9 +115,21 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
   }
 
   // TODO: frustum culling pass
-  // PRINT("{}\n", visible_list.size());
+  PRINT("{}\n", visible_list.size());
+  player_camera.update_frustum();
+  auto point =
+      *player_camera.get_view_matrix() * glm::vec4(0.0f, 5.0f, -10.0f, 1.0f);
+  PRINT("In frustum: {}\n", player_camera.frustum.test_point(point));
 
-  for (auto& drawable : visible_list) {
+  PANIC("TESTING\n");
+
+  for (auto& i : visible_list) {
+    if (true) {
+      render_list.push_back(i);
+    }
+  }
+
+  for (auto& drawable : render_list) {
     drawable.offset =
         cpu_bytes_allocated / sizeof(float) / attributes_per_vertice;
 
@@ -130,11 +144,11 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
   }
 }
 
-void ChunkManager::render_chunks(glm::vec3 pos, glm::mat4 view) {
-  manage_chunks(pos);
+void ChunkManager::render_chunks() {
+  manage_chunks(player_camera.get_player_pos());
 
-  shader_program.set_uniform_matrix<UniformMSize::FOUR>("view", 1, false,
-                                                        glm::value_ptr(view));
+  shader_program.set_uniform_matrix<UniformMSize::FOUR>(
+      "view", 1, false, glm::value_ptr(*player_camera.get_view_matrix()));
 
   shader_program.use();
   glBindVertexArray(vao);
@@ -143,7 +157,7 @@ void ChunkManager::render_chunks(glm::vec3 pos, glm::mat4 view) {
 
   std::vector<GLsizei> first;
   std::vector<GLsizei> count;
-  for (auto& drawable : visible_list) {
+  for (auto& drawable : render_list) {
     first.push_back(drawable.offset);
     count.push_back((drawable.chunk->get_vertices_byte_size() / sizeof(float)) /
                     attributes_per_vertice);

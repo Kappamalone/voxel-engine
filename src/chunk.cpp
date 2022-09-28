@@ -31,6 +31,7 @@ void Chunk::create_voxels() {
       int height = lerp_points.interpolate(perlin_value);
 
       for (auto y = 0; y < height; y++) {
+        /*
         // TODO: figure out how squishification works
         static constexpr double DENSITY_THRESHOLD = 0.35f;
         double density = perlin_noise.octave3D_11(
@@ -39,7 +40,7 @@ void Chunk::create_voxels() {
         if (density >= DENSITY_THRESHOLD) {
           set_voxel(x, y, z, VoxelType::GRASS);
         }
-        /*
+        */
         if (y <= WATER_THRESHOLD) {
           set_voxel(x, y, z, VoxelType::DIRT);
         } else if (y >= height - 1) {
@@ -49,7 +50,6 @@ void Chunk::create_voxels() {
         } else {
           set_voxel(x, y, z, VoxelType::STONE);
         }
-        */
       }
     }
   }

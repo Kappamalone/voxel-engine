@@ -1,9 +1,14 @@
 #include "player_camera.h"
 #include "glm/geometric.hpp"
 
-PlayerCamera::PlayerCamera(float aspect_ratio)
-    : projection(
-          glm::perspective(glm::radians(45.0f), aspect_ratio, 0.1f, 1000.0f)) {
+PlayerCamera::PlayerCamera(float fovy, float aspect_ratio, float znear,
+                           float zfar)
+    : frustum(fovy, aspect_ratio, znear, zfar) {
+  this->fovy = fovy;
+  this->aspect_ratio = aspect_ratio;
+  this->znear = znear;
+  this->zfar = zfar;
+  projection = glm::perspective(glm::radians(fovy), aspect_ratio, znear, zfar);
 }
 
 void PlayerCamera::process_input(Direction direction, float delta_time) {
