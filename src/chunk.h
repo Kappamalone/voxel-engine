@@ -10,7 +10,7 @@
 
 static constexpr int CHUNK_WIDTH = 16;
 static constexpr int CHUNK_DEPTH = 16;
-static constexpr int CHUNK_HEIGHT = 16;
+static constexpr int CHUNK_HEIGHT = 256;
 
 enum class VoxelType {
   AIR,
@@ -55,6 +55,11 @@ struct hash<ChunkPos> {
 };
 } // namespace std
 
+struct BoundingBox {
+  glm::vec3 min;
+  glm::vec3 max;
+};
+
 // NOTE: uses LH coordinate system for storage of local voxel positions
 class Chunk {
 private:
@@ -63,6 +68,8 @@ private:
 
   std::vector<Voxel> voxels;
   std::vector<float> vertices_buffer;
+  BoundingBox bounding_box;
+
   int xoffset;
   int zoffset;
   bool mesh_created = false;
@@ -91,8 +98,12 @@ public:
         int zoffset, siv::PerlinNoise& perlin_noise);
   void create_mesh();
 
-  float* get_vertices_data() {
+  const float* get_vertices_data() {
     return vertices_buffer.data();
+  }
+
+  const BoundingBox& get_bounding_box() const {
+    return bounding_box;
   }
 
   int get_vertices_byte_size() {

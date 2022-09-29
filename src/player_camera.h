@@ -11,7 +11,7 @@ enum class Direction { FORWARD, BACK, LEFT, RIGHT };
 
 class PlayerCamera {
 private:
-  glm::vec3 camera_pos = glm::vec3(0.0f, 0.0f, 0.0f);
+  glm::vec3 camera_pos = glm::vec3(0.0f, 150.0f, 0.0f);
   glm::vec3 camera_front = glm::vec3(0.0f, 0.0f, -1.0f);
   glm::vec3 camera_up = glm::vec3(0.0f, 1.0f, 0.0f);
   glm::vec3 world_up = camera_up;
@@ -51,8 +51,8 @@ public:
 
   void update_frustum() {
     static glm::mat4 test_projection =
-        glm::perspective(glm::radians(fovy - 20.0f), aspect_ratio, znear, zfar);
-    frustum.create_frustum_from_camera(test_projection * (*get_view_matrix()));
+        glm::perspective(glm::radians(fovy - 30.0f), aspect_ratio, znear, zfar);
+    frustum.create_frustum_from_camera(projection * (*get_view_matrix()));
   }
 
   Frustum frustum;

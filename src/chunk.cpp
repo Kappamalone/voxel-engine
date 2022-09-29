@@ -10,13 +10,17 @@ Chunk::Chunk(std::unordered_map<ChunkPos, Chunk>& world_chunks, int xoffset,
     : world_chunks(world_chunks), xoffset(xoffset), zoffset(zoffset),
       perlin_noise(perlin_noise) {
   create_voxels();
+  bounding_box =
+      BoundingBox{.min = glm::vec3(xoffset, 0, zoffset),
+                  .max = glm::vec3(xoffset + CHUNK_WIDTH, CHUNK_HEIGHT,
+                                   zoffset + CHUNK_DEPTH)};
 }
 
 void Chunk::create_voxels() {
   voxels.resize(CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT);
   std::fill(voxels.begin(), voxels.end(), Voxel{.voxel_type = VoxelType::AIR});
 
-  LerpPoints lerp_points(Point(-1.0f, 0), Point(1.0f, 10));
+  LerpPoints lerp_points(Point(-1.0f, 60), Point(1.0f, 120));
 
   for (auto z = 0; z < CHUNK_DEPTH; z++) {
     for (auto x = 0; x < CHUNK_WIDTH; x++) {

@@ -10,7 +10,6 @@
 struct ChunkDrawData {
   int offset;
   Chunk* chunk;
-  ChunkPos chunk_pos;
 };
 
 class ChunkManager {
@@ -34,7 +33,7 @@ private:
 
   void manage_chunks(glm::vec3 pos);
 
-  int view_distance = 10;
+  int view_distance = 14;
 
   static uint32_t random_seed();
 

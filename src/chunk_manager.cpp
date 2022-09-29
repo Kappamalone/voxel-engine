@@ -112,28 +112,18 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
         chunk.create_mesh();
       }
 
-      visible_list.push_back(
-          ChunkDrawData{.chunk = &world_chunks.at(w), .chunk_pos = w});
+      visible_list.push_back(ChunkDrawData{.chunk = &world_chunks.at(w)});
     }
   }
 
-  // TODO: frustum culling pass
-  PRINT("BEFORE: {}\n", visible_list.size());
+  PRINT("CHUNKS BEFORE: {}\n", visible_list.size());
   player_camera.update_frustum();
-  /*
-  auto point = glm::vec3(0.0f, 0.0f, 10.0f);
-  PRINT("{}\n", player_camera.frustum.test_point(point));
-
-  PANIC("TESTING\n");
-  */
   for (auto& i : visible_list) {
-    auto point = glm::vec3(i.chunk_pos.x * CHUNK_WIDTH, 0.0f,
-                           i.chunk_pos.z * CHUNK_DEPTH);
-    if (player_camera.frustum.test_point(point)) {
+    if (player_camera.frustum.test_bounding_box(i.chunk->get_bounding_box())) {
       render_list.push_back(i);
     }
   }
-  PRINT("AFTER: {}\n", render_list.size());
+  PRINT("CHUNKS AFTER: {}\n", render_list.size());
 
   for (auto& drawable : render_list) {
     drawable.offset =
