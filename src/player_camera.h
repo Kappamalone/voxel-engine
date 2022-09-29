@@ -37,7 +37,7 @@ public:
   void calculate_camera_vectors();
 
   glm::mat4* get_view_matrix() {
-    view = glm::lookAt(camera_pos, camera_pos + camera_front, world_up);
+    view = glm::lookAt(camera_pos, camera_pos + camera_front, camera_up);
     return &view;
   }
 
@@ -50,8 +50,9 @@ public:
   }
 
   void update_frustum() {
-    frustum.create_frustum_from_camera(camera_pos, camera_pos + camera_front,
-                                       world_up);
+    static glm::mat4 test_projection =
+        glm::perspective(glm::radians(fovy - 20.0f), aspect_ratio, znear, zfar);
+    frustum.create_frustum_from_camera(test_projection * (*get_view_matrix()));
   }
 
   Frustum frustum;

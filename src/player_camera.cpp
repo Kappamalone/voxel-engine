@@ -3,7 +3,7 @@
 
 PlayerCamera::PlayerCamera(float fovy, float aspect_ratio, float znear,
                            float zfar)
-    : frustum(fovy, aspect_ratio, znear, zfar) {
+    : frustum() {
   this->fovy = fovy;
   this->aspect_ratio = aspect_ratio;
   this->znear = znear;

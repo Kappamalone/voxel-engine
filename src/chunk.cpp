@@ -16,7 +16,7 @@ void Chunk::create_voxels() {
   voxels.resize(CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT);
   std::fill(voxels.begin(), voxels.end(), Voxel{.voxel_type = VoxelType::AIR});
 
-  LerpPoints lerp_points(Point(-1.0f, 60), Point(1.0f, 120));
+  LerpPoints lerp_points(Point(-1.0f, 0), Point(1.0f, 10));
 
   for (auto z = 0; z < CHUNK_DEPTH; z++) {
     for (auto x = 0; x < CHUNK_WIDTH; x++) {

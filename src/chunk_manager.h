@@ -10,6 +10,7 @@
 struct ChunkDrawData {
   int offset;
   Chunk* chunk;
+  ChunkPos chunk_pos;
 };
 
 class ChunkManager {

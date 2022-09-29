@@ -10,7 +10,7 @@
 
 static constexpr int CHUNK_WIDTH = 16;
 static constexpr int CHUNK_DEPTH = 16;
-static constexpr int CHUNK_HEIGHT = 256;
+static constexpr int CHUNK_HEIGHT = 16;
 
 enum class VoxelType {
   AIR,

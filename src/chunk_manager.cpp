@@ -73,9 +73,11 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
     world_chunk_pos.z = (int)(pos.z / CHUNK_DEPTH);
   }
 
+  /*
   if (world_chunk_pos == old_world_pos) {
     return;
   }
+  */
 
   // NOTE: there are infinitely better ways to handle chunks than to
   // rerender each of them each frame
@@ -110,24 +112,28 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
         chunk.create_mesh();
       }
 
-      visible_list.push_back(ChunkDrawData{.chunk = &world_chunks.at(w)});
+      visible_list.push_back(
+          ChunkDrawData{.chunk = &world_chunks.at(w), .chunk_pos = w});
     }
   }
 
   // TODO: frustum culling pass
-  PRINT("{}\n", visible_list.size());
+  PRINT("BEFORE: {}\n", visible_list.size());
   player_camera.update_frustum();
-  auto point =
-      *player_camera.get_view_matrix() * glm::vec4(0.0f, 5.0f, -10.0f, 1.0f);
-  PRINT("In frustum: {}\n", player_camera.frustum.test_point(point));
+  /*
+  auto point = glm::vec3(0.0f, 0.0f, 10.0f);
+  PRINT("{}\n", player_camera.frustum.test_point(point));
 
   PANIC("TESTING\n");
-
+  */
   for (auto& i : visible_list) {
-    if (true) {
+    auto point = glm::vec3(i.chunk_pos.x * CHUNK_WIDTH, 0.0f,
+                           i.chunk_pos.z * CHUNK_DEPTH);
+    if (player_camera.frustum.test_point(point)) {
       render_list.push_back(i);
     }
   }
+  PRINT("AFTER: {}\n", render_list.size());
 
   for (auto& drawable : render_list) {
     drawable.offset =

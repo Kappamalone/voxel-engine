@@ -1,50 +1,41 @@
 #pragma once
 #include "common.h"
+#include <cmath>
 #include <glad/glad.h>
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 #include <glm/gtc/type_ptr.hpp>
 
 struct Plane {
-  glm::vec3 normal;
-  glm::vec3 point;
+  float a, b, c, d;
 
-  [[nodiscard]] float signed_distance(glm::vec3 r) const {
-    PRINT("TEST: {} {}\n", glm::length(normal), glm::length(point));
-    return glm::dot(normal, r - point);
+  void normalize_plane() {
+    float mag = std::sqrt(a * a + b * b + c * c);
+    a /= mag;
+    b /= mag;
+    c /= mag;
+    d /= mag;
   }
 
-  void create_from_three_points(const glm::vec3 p0, const glm::vec3 p1,
-                                const glm::vec3 p2) {
-    const glm::vec3 line0 = glm::normalize(p1 - p0);
-    const glm::vec3 line1 = glm::normalize(p2 - p1);
-    normal = glm::cross(line1, line0);
-    PRINT("LENGTH: {}\n", glm::length(normal));
-    point = p0;
+  float distance_to_point(const glm::vec3& point) const {
+    return a * point.x + b * point.y + c * point.z + d;
   }
-};
-
-enum class FrustumSide {
-  BOTTOM = 0,
-  TOP,
-  NEAR,
-  FAR,
-  LEFT,
-  RIGHT,
 };
 
 class Frustum {
+  enum FrustumSide {
+    TOP = 0,
+    BOTTOM,
+    LEFT,
+    RIGHT,
+    NEAR,
+    FAR,
+  };
+
   Plane planes[6];
 
-  // n = near, t = top, l = left
-  glm::vec3 ntl, ntr, nbl, nbr, ftl, ftr, fbl, fbr;
-  float nearD, farD, ratio, angle, tang;
-  float nw, nh, fw, fh;
-
 public:
-  Frustum(float fovy, float aspect_ratio, float znear, float zfar);
-  void create_frustum_from_camera(const glm::vec3& p, const glm::vec3& l,
-                                  const glm::vec3& u);
-
+  Frustum();
+  void create_frustum_from_camera(const glm::mat4& comboMatrix);
   bool test_point(const glm::vec3& point);
 };
