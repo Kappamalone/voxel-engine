@@ -98,7 +98,7 @@ public:
         int zoffset, siv::PerlinNoise& perlin_noise);
   void create_mesh();
 
-  const float* get_vertices_data() {
+  const float* get_vertices_data() const {
     return vertices_buffer.data();
   }
 
@@ -106,7 +106,7 @@ public:
     return bounding_box;
   }
 
-  int get_vertices_byte_size() {
+  int get_vertices_byte_size() const {
     return vertices_buffer.size() * sizeof(float);
   }
 

@@ -12,6 +12,14 @@ struct ChunkDrawData {
   Chunk* chunk;
 };
 
+template <typename T>
+struct DebugInfo {
+  const char* name;
+  T data;
+  DebugInfo(const char* name, T data) : name(name), data(data) {
+  }
+};
+
 class ChunkManager {
 private:
   PlayerCamera& player_camera;
@@ -40,4 +48,6 @@ private:
 public:
   ChunkManager(PlayerCamera& player_camera);
   void render_chunks();
+
+  std::vector<DebugInfo<double>> debug_info;
 };

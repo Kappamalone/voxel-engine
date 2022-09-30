@@ -1,6 +1,7 @@
 #include "chunk_manager.h"
 #include "chunk.h"
 #include <random>
+#include <thread>
 
 ChunkManager::ChunkManager(PlayerCamera& player_camera)
     : player_camera(player_camera),
@@ -83,12 +84,14 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
   // rerender each of them each frame
   visible_list.clear();
   render_list.clear();
+  debug_info.clear();
   old_world_pos = world_chunk_pos;
 
   // NOTE: we create voxel data for radius view_distance+1, but only generate
   // voxel information for view_distance in order to cull chunk borders
 
   // voxel creation pass
+  double before = glfwGetTime();
   for (int dx = -view_distance - 1; dx <= view_distance + 1; ++dx) {
     for (int dz = -view_distance - 1; dz <= view_distance + 1; ++dz) {
       auto w =
@@ -100,8 +103,15 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
       }
     }
   }
+  double after = glfwGetTime();
+  debug_info.emplace_back("Voxel Creation: ", (after - before) * 1000);
+  if ((after - before) * 1000 > 5) {
+    PRINT("Voxel Creation: {}\n", (after - before) * 1000);
+  }
 
   // visible chunks pass and mesh creation pass
+  before = glfwGetTime();
+  static std::vector<std::thread> thread_pool;
   for (int dx = -view_distance; dx <= view_distance; ++dx) {
     for (int dz = -view_distance; dz <= view_distance; ++dz) {
       auto w =
@@ -109,21 +119,33 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
 
       auto& chunk = world_chunks.at(w);
       if (!chunk.initial_mesh_created()) {
-        chunk.create_mesh();
+        auto func = [&]() { chunk.create_mesh(); };
+        thread_pool.emplace_back(func);
       }
 
       visible_list.push_back(ChunkDrawData{.chunk = &world_chunks.at(w)});
     }
   }
+  for (auto& thread : thread_pool) {
+    thread.join();
+  }
+  thread_pool.clear();
+  after = glfwGetTime();
 
-  PRINT("CHUNKS BEFORE: {}\n", visible_list.size());
+  debug_info.emplace_back("Voxel Mesh: ", (after - before) * 1000);
+  if ((after - before) * 1000 > 5) {
+    PRINT("Voxel Mesh: {}\n", (after - before) * 1000);
+  }
+
+  before = glfwGetTime();
   player_camera.update_frustum();
   for (auto& i : visible_list) {
     if (player_camera.frustum.test_bounding_box(i.chunk->get_bounding_box())) {
       render_list.push_back(i);
     }
   }
-  PRINT("CHUNKS AFTER: {}\n", render_list.size());
+  after = glfwGetTime();
+  debug_info.emplace_back("Voxel BB: ", (after - before) * 1000);
 
   for (auto& drawable : render_list) {
     drawable.offset =

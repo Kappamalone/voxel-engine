@@ -18,7 +18,6 @@ Chunk::Chunk(std::unordered_map<ChunkPos, Chunk>& world_chunks, int xoffset,
 
 void Chunk::create_voxels() {
   voxels.resize(CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT);
-  std::fill(voxels.begin(), voxels.end(), Voxel{.voxel_type = VoxelType::AIR});
 
   LerpPoints lerp_points(Point(-1.0f, 60), Point(1.0f, 120));
 
@@ -112,7 +111,7 @@ void Chunk::emit_vertex_coordinates(int index, float x, float y, float z) {
 
 void Chunk::emit_texture_coordinates(TexturePosition position,
                                      int atlas_index) {
-  static const int tex_atlas_rows = 16;
+  static constexpr const int tex_atlas_rows = 16;
   int column = atlas_index % tex_atlas_rows;
   int row = atlas_index / tex_atlas_rows;
   float xoff = (float)column / (float)tex_atlas_rows;
@@ -241,11 +240,6 @@ void Chunk::create_mesh() {
   // algorithm:
   //  for each voxel that isn't an air type, check if any of it's six faces
   //  borders an air block, if so add that face to the mesh, else ignore
-  //
-  //  TODO: handle chunk border vertices culling
-  //  -> for a view distance of eg 1, generate voxel data for view distance + 1,
-  //  then iterate through view distance blocks and generate meshes (and setting
-  //  mesh generated flag)
   mesh_created = true;
 
   for (auto y = 0; y < CHUNK_HEIGHT; y++) {

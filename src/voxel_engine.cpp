@@ -21,6 +21,11 @@ void VoxelEngine::run() {
     ImGui::Text(a.c_str());
     ImGui::Text(b.c_str());
     ImGui::Separator();
+    for (auto& debug_info : chunk_manager.debug_info) {
+      ImGui::Text(
+          fmt::format("{} {:.02f}ms\n", debug_info.name, debug_info.data)
+              .c_str());
+    }
     ImGui::End();
   };
 
@@ -50,6 +55,7 @@ void VoxelEngine::handle_input() {
   current_frame = glfwGetTime();
   delta_time = current_frame - last_frame;
   last_frame = current_frame;
+
   glfwPollEvents();
   if (window.key_pressed(GLFW_KEY_ESCAPE)) {
     glfwSetWindowShouldClose(window.get_window(), true);
