@@ -43,9 +43,11 @@ public:
   }
 
   float interpolate(float x) {
+    /*
     if (x > 1.0f || x < -1.0f) {
       PANIC("Interpolation point not between -1 and 1!\n");
     }
+    */
 
     float x0, y0, x1, y1;
     Point lower = Point(-1, -1);

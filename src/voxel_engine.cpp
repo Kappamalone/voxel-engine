@@ -21,11 +21,6 @@ void VoxelEngine::run() {
     ImGui::Text(a.c_str());
     ImGui::Text(b.c_str());
     ImGui::Separator();
-    for (auto& debug_info : chunk_manager.debug_info) {
-      ImGui::Text(
-          fmt::format("{} {:.02f}ms\n", debug_info.name, debug_info.data)
-              .c_str());
-    }
     ImGui::End();
   };
 

@@ -73,6 +73,7 @@ private:
   int xoffset;
   int zoffset;
   bool mesh_created = false;
+  bool mesh_creation_requested = false;
 
   void emit_vertex_coordinates(int index, float x, float y, float z);
   void emit_texture_coordinates(TexturePosition position, int atlas_index);
@@ -112,6 +113,14 @@ public:
 
   bool initial_mesh_created() const {
     return mesh_created;
+  }
+
+  bool has_mesh_requested() const {
+    return mesh_creation_requested;
+  }
+
+  void request_mesh_creation() {
+    mesh_creation_requested = true;
   }
 
 private:

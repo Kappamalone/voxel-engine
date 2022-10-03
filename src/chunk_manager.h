@@ -2,22 +2,22 @@
 #include "chunk.h"
 #include "frustum.h"
 #include "player_camera.h"
+#include <thread>
 
 #define STB_IMAGE_STATIC
 #define STB_IMAGE_IMPLEMENTATION
 #include "stb_image.h"
 
+// The chunk draw process:
+//  N + 1 chunk data generated around the player (once)
+//  N chunk meshes generated around player (once)
+//    - separate thread dedicated to generating this data
+//  Frustum culling to determine visible meshes (per frame)
+//  Render visible meshes (per frame)
+
 struct ChunkDrawData {
   int offset;
   Chunk* chunk;
-};
-
-template <typename T>
-struct DebugInfo {
-  const char* name;
-  T data;
-  DebugInfo(const char* name, T data) : name(name), data(data) {
-  }
 };
 
 class ChunkManager {
@@ -27,7 +27,7 @@ private:
   GLuint vao;
   GLuint vbo;
   int cpu_bytes_allocated = 0;
-  int gpu_bytes_allocated = 1024 * 1024 * 400;
+  int gpu_bytes_allocated = 1024 * 1024 * 100;
   ShaderProgram shader_program;
   int attributes_per_vertice = 5;
 
@@ -39,6 +39,9 @@ private:
   std::vector<ChunkDrawData> visible_list;
   std::vector<ChunkDrawData> render_list;
 
+  std::thread mesh_gen_thread;
+  std::vector<Chunk*> mesh_gen_queue;
+
   void manage_chunks(glm::vec3 pos);
 
   int view_distance = 14;
@@ -48,6 +51,4 @@ private:
 public:
   ChunkManager(PlayerCamera& player_camera);
   void render_chunks();
-
-  std::vector<DebugInfo<double>> debug_info;
 };

@@ -1,12 +1,24 @@
 #include "chunk_manager.h"
 #include "chunk.h"
-#include <random>
 #include <thread>
 
 ChunkManager::ChunkManager(PlayerCamera& player_camera)
     : player_camera(player_camera),
       shader_program(chunk_vert, chunk_frag, ShaderSourceType::STRING),
       perlin_noise(random_seed()) {
+
+  mesh_gen_thread = std::thread(
+      [](std::vector<Chunk*>& mesh_gen_queue) {
+        while (true) {
+          if (!mesh_gen_queue.empty()) {
+            mesh_gen_queue[mesh_gen_queue.size() - 1]->create_mesh();
+            mesh_gen_queue.pop_back();
+          }
+          PRINT("");
+        }
+      },
+      std::ref(mesh_gen_queue));
+  mesh_gen_thread.detach();
 
   shader_program.set_uniform_matrix<UniformMSize::FOUR>(
       "projection", 1, false,
@@ -84,7 +96,6 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
   // rerender each of them each frame
   visible_list.clear();
   render_list.clear();
-  debug_info.clear();
   old_world_pos = world_chunk_pos;
 
   // NOTE: we create voxel data for radius view_distance+1, but only generate
@@ -104,35 +115,27 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
     }
   }
   double after = glfwGetTime();
-  debug_info.emplace_back("Voxel Creation: ", (after - before) * 1000);
   if ((after - before) * 1000 > 5) {
     PRINT("Voxel Creation: {}\n", (after - before) * 1000);
   }
 
   // visible chunks pass and mesh creation pass
   before = glfwGetTime();
-  static std::vector<std::thread> thread_pool;
   for (int dx = -view_distance; dx <= view_distance; ++dx) {
     for (int dz = -view_distance; dz <= view_distance; ++dz) {
       auto w =
           ChunkPos{.x = world_chunk_pos.x + dx, .z = world_chunk_pos.z + dz};
 
       auto& chunk = world_chunks.at(w);
-      if (!chunk.initial_mesh_created()) {
-        auto func = [&]() { chunk.create_mesh(); };
-        thread_pool.emplace_back(func);
+      if (!chunk.initial_mesh_created() && !chunk.has_mesh_requested()) {
+        mesh_gen_queue.push_back(&chunk);
+        chunk.request_mesh_creation();
+      } else {
+        visible_list.push_back(ChunkDrawData{.chunk = &chunk});
       }
-
-      visible_list.push_back(ChunkDrawData{.chunk = &world_chunks.at(w)});
     }
   }
-  for (auto& thread : thread_pool) {
-    thread.join();
-  }
-  thread_pool.clear();
   after = glfwGetTime();
-
-  debug_info.emplace_back("Voxel Mesh: ", (after - before) * 1000);
   if ((after - before) * 1000 > 5) {
     PRINT("Voxel Mesh: {}\n", (after - before) * 1000);
   }
@@ -145,7 +148,9 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
     }
   }
   after = glfwGetTime();
-  debug_info.emplace_back("Voxel BB: ", (after - before) * 1000);
+  if ((after - before) * 1000 > 5) {
+    PRINT("Voxel Mesh: {}\n", (after - before) * 1000);
+  }
 
   for (auto& drawable : render_list) {
     drawable.offset =

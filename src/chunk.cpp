@@ -240,6 +240,10 @@ void Chunk::create_mesh() {
   // algorithm:
   //  for each voxel that isn't an air type, check if any of it's six faces
   //  borders an air block, if so add that face to the mesh, else ignore
+  if (mesh_created == true) {
+    PRINT("Threading is hard...\n");
+    return;
+  }
   mesh_created = true;
 
   for (auto y = 0; y < CHUNK_HEIGHT; y++) {
