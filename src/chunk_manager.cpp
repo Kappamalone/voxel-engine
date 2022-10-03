@@ -8,11 +8,11 @@ ChunkManager::ChunkManager(PlayerCamera& player_camera)
       perlin_noise(random_seed()) {
 
   mesh_gen_thread = std::thread(
-      [](std::vector<Chunk*>& mesh_gen_queue) {
+      [](std::deque<Chunk*>& mesh_gen_queue) {
         while (true) {
-          if (!mesh_gen_queue.empty()) {
-            mesh_gen_queue[mesh_gen_queue.size() - 1]->create_mesh();
-            mesh_gen_queue.pop_back();
+          while (!mesh_gen_queue.empty()) {
+            mesh_gen_queue[0]->create_mesh();
+            mesh_gen_queue.pop_front();
           }
           PRINT("");
         }
@@ -71,6 +71,10 @@ ChunkManager::ChunkManager(PlayerCamera& player_camera)
 }
 
 void ChunkManager::manage_chunks(glm::vec3 pos) {
+  // NOTE: there are infinitely better ways to handle chunks than to
+  // rerender each of them each frame
+  visible_list.clear();
+  render_list.clear();
   cpu_bytes_allocated = 0;
   ChunkPos world_chunk_pos;
 
@@ -85,18 +89,6 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
   } else {
     world_chunk_pos.z = (int)(pos.z / CHUNK_DEPTH);
   }
-
-  /*
-  if (world_chunk_pos == old_world_pos) {
-    return;
-  }
-  */
-
-  // NOTE: there are infinitely better ways to handle chunks than to
-  // rerender each of them each frame
-  visible_list.clear();
-  render_list.clear();
-  old_world_pos = world_chunk_pos;
 
   // NOTE: we create voxel data for radius view_distance+1, but only generate
   // voxel information for view_distance in order to cull chunk borders
@@ -127,9 +119,16 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
           ChunkPos{.x = world_chunk_pos.x + dx, .z = world_chunk_pos.z + dz};
 
       auto& chunk = world_chunks.at(w);
+      // TODO: pass these into the chunk and reform chunk to take ChunkPos
+      // and rewrite into one loop
+      auto& chunku = world_chunks.at(ChunkPos{.x = w.x, .z = w.z + 1});
+      auto& chunkd = world_chunks.at(ChunkPos{.x = w.x, .z = w.z - 1});
+      auto& chunkl = world_chunks.at(ChunkPos{.x = w.x - 1, .z = w.z});
+      auto& chunkr = world_chunks.at(ChunkPos{.x = w.x + 1, .z = w.z});
       if (!chunk.initial_mesh_created() && !chunk.has_mesh_requested()) {
-        mesh_gen_queue.push_back(&chunk);
         chunk.request_mesh_creation();
+        mesh_gen_queue.push_back(&chunk);
+        // chunk.create_mesh();
       } else {
         visible_list.push_back(ChunkDrawData{.chunk = &chunk});
       }

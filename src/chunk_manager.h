@@ -2,6 +2,7 @@
 #include "chunk.h"
 #include "frustum.h"
 #include "player_camera.h"
+#include <deque>
 #include <thread>
 
 #define STB_IMAGE_STATIC
@@ -27,7 +28,7 @@ private:
   GLuint vao;
   GLuint vbo;
   int cpu_bytes_allocated = 0;
-  int gpu_bytes_allocated = 1024 * 1024 * 100;
+  int gpu_bytes_allocated = 1024 * 1024 * 1000;
   ShaderProgram shader_program;
   int attributes_per_vertice = 5;
 
@@ -40,11 +41,11 @@ private:
   std::vector<ChunkDrawData> render_list;
 
   std::thread mesh_gen_thread;
-  std::vector<Chunk*> mesh_gen_queue;
+  std::deque<Chunk*> mesh_gen_queue;
 
   void manage_chunks(glm::vec3 pos);
 
-  int view_distance = 14;
+  int view_distance = 10;
 
   static uint32_t random_seed();
 

@@ -241,7 +241,7 @@ void Chunk::create_mesh() {
   //  for each voxel that isn't an air type, check if any of it's six faces
   //  borders an air block, if so add that face to the mesh, else ignore
   if (mesh_created == true) {
-    PRINT("Threading is hard...\n");
+    // PRINT("Threading is hard...\n");
     return;
   }
   mesh_created = true;
@@ -285,12 +285,6 @@ void Chunk::create_mesh() {
             case BlockFaces::LEFT: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (x == 0) {
-                auto n_chunk_pos = ChunkPos{xoffset / 16 - 1, zoffset / 16};
-                if (!world_chunks.at(n_chunk_pos)
-                         .is_air_voxel(CHUNK_WIDTH - 1, y, z)) {
-                  continue;
-                }
-
                 construct_face(BlockFaces::LEFT, tex_atlas_index, x, y, z);
                 continue;
               }
@@ -302,11 +296,6 @@ void Chunk::create_mesh() {
             case BlockFaces::RIGHT: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (x == CHUNK_WIDTH - 1) {
-                auto n_chunk_pos = ChunkPos{xoffset / 16 + 1, zoffset / 16};
-                if (!world_chunks.at(n_chunk_pos).is_air_voxel(0, y, z)) {
-                  continue;
-                }
-
                 construct_face(BlockFaces::RIGHT, tex_atlas_index, x, y, z);
                 continue;
               }
@@ -318,11 +307,6 @@ void Chunk::create_mesh() {
             case BlockFaces::FRONT: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (z == 0) {
-                auto n_chunk_pos = ChunkPos{xoffset / 16, zoffset / 16 + 1};
-                if (!world_chunks.at(n_chunk_pos)
-                         .is_air_voxel(x, y, CHUNK_DEPTH - 1)) {
-                  continue;
-                }
                 construct_face(BlockFaces::FRONT, tex_atlas_index, x, y, z);
                 continue;
               }
@@ -334,10 +318,6 @@ void Chunk::create_mesh() {
             case BlockFaces::BACK: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (z == CHUNK_DEPTH - 1) {
-                auto n_chunk_pos = ChunkPos{xoffset / 16, zoffset / 16 - 1};
-                if (!world_chunks.at(n_chunk_pos).is_air_voxel(x, y, 0)) {
-                  continue;
-                }
                 construct_face(BlockFaces::BACK, tex_atlas_index, x, y, z);
                 continue;
               }

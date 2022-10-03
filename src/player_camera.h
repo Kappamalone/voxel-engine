@@ -27,7 +27,7 @@ private:
   float znear;
   float zfar;
 
-  float camera_speed = 40.f;
+  float camera_speed = 160.f;
   float camera_mouse_sensitivity = 0.1f;
 
 public:
