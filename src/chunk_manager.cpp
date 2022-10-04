@@ -101,8 +101,7 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
           ChunkPos{.x = world_chunk_pos.x + dx, .z = world_chunk_pos.z + dz};
 
       if (world_chunks.find(w) == world_chunks.end()) {
-        world_chunks.insert({w, Chunk(world_chunks, w.x * CHUNK_WIDTH,
-                                      w.z * CHUNK_DEPTH, perlin_noise)});
+        world_chunks.insert({w, Chunk(w, perlin_noise)});
       }
     }
   }
@@ -121,10 +120,11 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
       auto& chunk = world_chunks.at(w);
       // TODO: pass these into the chunk and reform chunk to take ChunkPos
       // and rewrite into one loop
-      auto& chunku = world_chunks.at(ChunkPos{.x = w.x, .z = w.z + 1});
-      auto& chunkd = world_chunks.at(ChunkPos{.x = w.x, .z = w.z - 1});
-      auto& chunkl = world_chunks.at(ChunkPos{.x = w.x - 1, .z = w.z});
-      auto& chunkr = world_chunks.at(ChunkPos{.x = w.x + 1, .z = w.z});
+      auto& f_chunk = world_chunks.at(ChunkPos{.x = w.x, .z = w.z + 1});
+      auto& b_chunk = world_chunks.at(ChunkPos{.x = w.x, .z = w.z - 1});
+      auto& l_chunk = world_chunks.at(ChunkPos{.x = w.x - 1, .z = w.z});
+      auto& r_chunk = world_chunks.at(ChunkPos{.x = w.x + 1, .z = w.z});
+      chunk.set_neighbour_chunks(&f_chunk, &b_chunk, &l_chunk, &r_chunk);
       if (!chunk.initial_mesh_created() && !chunk.has_mesh_requested()) {
         chunk.request_mesh_creation();
         mesh_gen_queue.push_back(&chunk);

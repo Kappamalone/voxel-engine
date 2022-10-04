@@ -63,15 +63,17 @@ struct BoundingBox {
 // NOTE: uses LH coordinate system for storage of local voxel positions
 class Chunk {
 private:
-  std::unordered_map<ChunkPos, Chunk>& world_chunks;
+  Chunk* u_chunk;
+  Chunk* d_chunk;
+  Chunk* l_chunk;
+  Chunk* r_chunk;
   siv::PerlinNoise& perlin_noise;
 
   std::vector<Voxel> voxels;
   std::vector<float> vertices_buffer;
   BoundingBox bounding_box;
 
-  int xoffset;
-  int zoffset;
+  ChunkPos chunk_pos;
   bool mesh_created = false;
   bool mesh_creation_requested = false;
 
@@ -94,10 +96,19 @@ private:
     return get_voxel(x, y, z).voxel_type == VoxelType::AIR;
   }
 
+  float get_x_offset() const {
+    return chunk_pos.x * CHUNK_WIDTH;
+  }
+
+  float get_z_offset() const {
+    return chunk_pos.z * CHUNK_DEPTH;
+  }
+
 public:
-  Chunk(std::unordered_map<ChunkPos, Chunk>& world_chunks, int xoffset,
-        int zoffset, siv::PerlinNoise& perlin_noise);
+  Chunk(ChunkPos chunk_pos, siv::PerlinNoise& perlin_noise);
   void create_mesh();
+  void set_neighbour_chunks(Chunk* u_chunk, Chunk* d_chunk, Chunk* l_chunk,
+                            Chunk* r_chunk);
 
   const float* get_vertices_data() const {
     return vertices_buffer.data();

@@ -5,15 +5,19 @@
 #include <cmath>
 #include <unordered_map>
 
-Chunk::Chunk(std::unordered_map<ChunkPos, Chunk>& world_chunks, int xoffset,
-             int zoffset, siv::PerlinNoise& perlin_noise)
-    : world_chunks(world_chunks), xoffset(xoffset), zoffset(zoffset),
-      perlin_noise(perlin_noise) {
+Chunk::Chunk(ChunkPos chunk_pos, siv::PerlinNoise& perlin_noise)
+    : chunk_pos(chunk_pos), perlin_noise(perlin_noise) {
   create_voxels();
-  bounding_box =
-      BoundingBox{.min = glm::vec3(xoffset, 0, zoffset),
-                  .max = glm::vec3(xoffset + CHUNK_WIDTH, CHUNK_HEIGHT,
-                                   zoffset + CHUNK_DEPTH)};
+  bounding_box = BoundingBox{
+      .min = glm::vec3(get_x_offset(), 0, get_z_offset()),
+      .max = glm::vec3(get_x_offset(), CHUNK_HEIGHT, get_z_offset())};
+}
+void Chunk::set_neighbour_chunks(Chunk* u_chunk, Chunk* d_chunk, Chunk* l_chunk,
+                                 Chunk* r_chunk) {
+  this->u_chunk = u_chunk;
+  this->d_chunk = d_chunk;
+  this->l_chunk = l_chunk;
+  this->r_chunk = r_chunk;
 }
 
 void Chunk::create_voxels() {
@@ -28,9 +32,10 @@ void Chunk::create_voxels() {
       static constexpr float PERLIN_OCTAVES = 3;
       static constexpr float PERLIN_PERSISTENCE = 0.5;
 
-      double perlin_value = (perlin_noise.octave2D_11(
-          (xoffset + x) * PERLIN_SCALE, (zoffset - z) * PERLIN_SCALE,
-          PERLIN_OCTAVES, PERLIN_PERSISTENCE));
+      double perlin_value =
+          (perlin_noise.octave2D_11((get_x_offset() + x) * PERLIN_SCALE,
+                                    (get_z_offset() - z) * PERLIN_SCALE,
+                                    PERLIN_OCTAVES, PERLIN_PERSISTENCE));
       int height = lerp_points.interpolate(perlin_value);
 
       for (auto y = 0; y < height; y++) {
@@ -38,9 +43,9 @@ void Chunk::create_voxels() {
         // TODO: figure out how squishification works
         static constexpr double DENSITY_THRESHOLD = 0.35f;
         double density = perlin_noise.octave3D_11(
-            (xoffset + x) * PERLIN_SCALE, y * PERLIN_SCALE,
-            (zoffset - z) * PERLIN_SCALE, PERLIN_OCTAVES, PERLIN_PERSISTENCE);
-        if (density >= DENSITY_THRESHOLD) {
+            (get_x_offset() + x) * PERLIN_SCALE, y * PERLIN_SCALE,
+            (get_z_offset() - z) * PERLIN_SCALE, PERLIN_OCTAVES,
+        PERLIN_PERSISTENCE); if (density >= DENSITY_THRESHOLD) {
           set_voxel(x, y, z, VoxelType::GRASS);
         }
         */
@@ -64,44 +69,44 @@ void Chunk::create_voxels() {
 void Chunk::emit_vertex_coordinates(int index, float x, float y, float z) {
   switch (index) {
     case 0:
-      vertices_buffer.push_back(xoffset + x);
+      vertices_buffer.push_back(get_x_offset() + x);
       vertices_buffer.push_back(y);
-      vertices_buffer.push_back(zoffset - z);
+      vertices_buffer.push_back(get_z_offset() - z);
       break;
     case 1:
-      vertices_buffer.push_back(xoffset + x);
+      vertices_buffer.push_back(get_x_offset() + x);
       vertices_buffer.push_back(y);
-      vertices_buffer.push_back(zoffset - z - 1.0f);
+      vertices_buffer.push_back(get_z_offset() - z - 1.0f);
       break;
     case 2:
-      vertices_buffer.push_back(xoffset + x + 1.0f);
+      vertices_buffer.push_back(get_x_offset() + x + 1.0f);
       vertices_buffer.push_back(y);
-      vertices_buffer.push_back(zoffset - z - 1.0f);
+      vertices_buffer.push_back(get_z_offset() - z - 1.0f);
       break;
     case 3:
-      vertices_buffer.push_back(xoffset + x + 1.0f);
+      vertices_buffer.push_back(get_x_offset() + x + 1.0f);
       vertices_buffer.push_back(y);
-      vertices_buffer.push_back(zoffset - z);
+      vertices_buffer.push_back(get_z_offset() - z);
       break;
     case 4:
-      vertices_buffer.push_back(xoffset + x);
+      vertices_buffer.push_back(get_x_offset() + x);
       vertices_buffer.push_back(y + 1.0f);
-      vertices_buffer.push_back(zoffset - z);
+      vertices_buffer.push_back(get_z_offset() - z);
       break;
     case 5:
-      vertices_buffer.push_back(xoffset + x);
+      vertices_buffer.push_back(get_x_offset() + x);
       vertices_buffer.push_back(y + 1.0f);
-      vertices_buffer.push_back(zoffset - z - 1.0f);
+      vertices_buffer.push_back(get_z_offset() - z - 1.0f);
       break;
     case 6:
-      vertices_buffer.push_back(xoffset + x + 1.0f);
+      vertices_buffer.push_back(get_x_offset() + x + 1.0f);
       vertices_buffer.push_back(y + 1.0f);
-      vertices_buffer.push_back(zoffset - z - 1.0f);
+      vertices_buffer.push_back(get_z_offset() - z - 1.0f);
       break;
     case 7:
-      vertices_buffer.push_back(xoffset + x + 1.0f);
+      vertices_buffer.push_back(get_x_offset() + x + 1.0f);
       vertices_buffer.push_back(y + 1.0f);
-      vertices_buffer.push_back(zoffset - z);
+      vertices_buffer.push_back(get_z_offset() - z);
       break;
     default:
       PANIC("what?\n");
@@ -285,6 +290,9 @@ void Chunk::create_mesh() {
             case BlockFaces::LEFT: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (x == 0) {
+                if (!(l_chunk->is_air_voxel(CHUNK_WIDTH - 1, y, z))) {
+                  continue;
+                }
                 construct_face(BlockFaces::LEFT, tex_atlas_index, x, y, z);
                 continue;
               }
@@ -296,6 +304,9 @@ void Chunk::create_mesh() {
             case BlockFaces::RIGHT: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (x == CHUNK_WIDTH - 1) {
+                if (!(r_chunk->is_air_voxel(0, y, z))) {
+                  continue;
+                }
                 construct_face(BlockFaces::RIGHT, tex_atlas_index, x, y, z);
                 continue;
               }
@@ -305,8 +316,12 @@ void Chunk::create_mesh() {
               break;
             }
             case BlockFaces::FRONT: {
+              // NOTE: front faces the player, back faces away (d'oh)
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (z == 0) {
+                if (!(u_chunk->is_air_voxel(x, y, CHUNK_DEPTH - 1))) {
+                  continue;
+                }
                 construct_face(BlockFaces::FRONT, tex_atlas_index, x, y, z);
                 continue;
               }
@@ -318,6 +333,9 @@ void Chunk::create_mesh() {
             case BlockFaces::BACK: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (z == CHUNK_DEPTH - 1) {
+                if (!(d_chunk->is_air_voxel(x, y, 0))) {
+                  continue;
+                }
                 construct_face(BlockFaces::BACK, tex_atlas_index, x, y, z);
                 continue;
               }
