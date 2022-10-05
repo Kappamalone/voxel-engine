@@ -37,15 +37,15 @@ ChunkManager::ChunkManager(PlayerCamera& player_camera)
   // 256x256
   int width, height, channels;
   // stbi_set_flip_vertically_on_load(true);
-  unsigned char* pixels = stbi_load("../src/assets/terrain_2071786.jpg", &width,
-                                    &height, &channels, 0);
+  unsigned char* pixels =
+      stbi_load("../src/assets/terrain.png", &width, &height, &channels, 0);
   if (!pixels) {
     PANIC("Cannot find texture!\n");
   }
   PRINT("[DEBUG] Texture atlas (width, height, channels): ({}, {}, {})\n",
         width, height, channels);
-  glTextureStorage2D(tex_atlas, 1, GL_RGB8, width, height);
-  glTextureSubImage2D(tex_atlas, 0, 0, 0, width, height, GL_RGB,
+  glTextureStorage2D(tex_atlas, 1, GL_RGBA8, width, height);
+  glTextureSubImage2D(tex_atlas, 0, 0, 0, width, height, GL_RGBA,
                       GL_UNSIGNED_BYTE, pixels);
   glGenerateTextureMipmap(tex_atlas);
   stbi_image_free(pixels);
@@ -71,8 +71,6 @@ ChunkManager::ChunkManager(PlayerCamera& player_camera)
 }
 
 void ChunkManager::manage_chunks(glm::vec3 pos) {
-  // NOTE: there are infinitely better ways to handle chunks than to
-  // rerender each of them each frame
   visible_list.clear();
   render_list.clear();
   cpu_bytes_allocated = 0;
@@ -93,6 +91,7 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
   // NOTE: we create voxel data for radius view_distance+1, but only generate
   // voxel information for view_distance in order to cull chunk borders
 
+  //  TODO: this is the next major performance bottleneck
   // voxel creation pass
   double before = glfwGetTime();
   for (int dx = -view_distance - 1; dx <= view_distance + 1; ++dx) {
@@ -105,6 +104,7 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
       }
     }
   }
+  place_block(0, 200, 32, VoxelType::DIRT);
   double after = glfwGetTime();
   if ((after - before) * 1000 > 5) {
     PRINT("Voxel Creation: {}\n", (after - before) * 1000);
@@ -118,17 +118,14 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
           ChunkPos{.x = world_chunk_pos.x + dx, .z = world_chunk_pos.z + dz};
 
       auto& chunk = world_chunks.at(w);
-      // TODO: pass these into the chunk and reform chunk to take ChunkPos
-      // and rewrite into one loop
-      auto& f_chunk = world_chunks.at(ChunkPos{.x = w.x, .z = w.z + 1});
-      auto& b_chunk = world_chunks.at(ChunkPos{.x = w.x, .z = w.z - 1});
-      auto& l_chunk = world_chunks.at(ChunkPos{.x = w.x - 1, .z = w.z});
-      auto& r_chunk = world_chunks.at(ChunkPos{.x = w.x + 1, .z = w.z});
-      chunk.set_neighbour_chunks(&f_chunk, &b_chunk, &l_chunk, &r_chunk);
       if (!chunk.initial_mesh_created() && !chunk.has_mesh_requested()) {
+        auto& f_chunk = world_chunks.at(ChunkPos{.x = w.x, .z = w.z + 1});
+        auto& b_chunk = world_chunks.at(ChunkPos{.x = w.x, .z = w.z - 1});
+        auto& l_chunk = world_chunks.at(ChunkPos{.x = w.x - 1, .z = w.z});
+        auto& r_chunk = world_chunks.at(ChunkPos{.x = w.x + 1, .z = w.z});
+        chunk.set_neighbour_chunks(&f_chunk, &b_chunk, &l_chunk, &r_chunk);
         chunk.request_mesh_creation();
         mesh_gen_queue.push_back(&chunk);
-        // chunk.create_mesh();
       } else {
         visible_list.push_back(ChunkDrawData{.chunk = &chunk});
       }

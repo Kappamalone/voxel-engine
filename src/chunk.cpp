@@ -14,16 +14,22 @@ Chunk::Chunk(ChunkPos chunk_pos, siv::PerlinNoise& perlin_noise)
 }
 void Chunk::set_neighbour_chunks(Chunk* u_chunk, Chunk* d_chunk, Chunk* l_chunk,
                                  Chunk* r_chunk) {
-  this->u_chunk = u_chunk;
-  this->d_chunk = d_chunk;
+  this->f_chunk = u_chunk;
+  this->b_chunk = d_chunk;
   this->l_chunk = l_chunk;
   this->r_chunk = r_chunk;
 }
 
+// TODO: trees
+// mark locations for trees to be placed by chunk manager
+// (mark local x y, and world y coord)
 void Chunk::create_voxels() {
   voxels.resize(CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT);
 
   LerpPoints lerp_points(Point(-1.0f, 60), Point(1.0f, 120));
+  lerp_points.add_point(Point(0.0, 90));
+  lerp_points.add_point(Point(0.2, 95));
+  lerp_points.add_point(Point(0.4, 90));
 
   for (auto z = 0; z < CHUNK_DEPTH; z++) {
     for (auto x = 0; x < CHUNK_WIDTH; x++) {
@@ -38,7 +44,7 @@ void Chunk::create_voxels() {
                                     PERLIN_OCTAVES, PERLIN_PERSISTENCE));
       int height = lerp_points.interpolate(perlin_value);
 
-      for (auto y = 0; y < height; y++) {
+      for (auto y = 0; y < std::max(height, WATER_THRESHOLD); y++) {
         /*
         // TODO: figure out how squishification works
         static constexpr double DENSITY_THRESHOLD = 0.35f;
@@ -49,14 +55,18 @@ void Chunk::create_voxels() {
           set_voxel(x, y, z, VoxelType::GRASS);
         }
         */
-        if (y <= WATER_THRESHOLD) {
-          set_voxel(x, y, z, VoxelType::DIRT);
-        } else if (y >= height - 1) {
-          set_voxel(x, y, z, VoxelType::GRASS);
-        } else if (y >= height - 5) {
-          set_voxel(x, y, z, VoxelType::DIRT);
+        if (y < height) {
+          if (y <= WATER_THRESHOLD) {
+            set_voxel(x, y, z, VoxelType::DIRT);
+          } else if (y >= height - 1) {
+            set_voxel(x, y, z, VoxelType::GRASS);
+          } else if (y >= height - 5) {
+            set_voxel(x, y, z, VoxelType::DIRT);
+          } else {
+            set_voxel(x, y, z, VoxelType::STONE);
+          }
         } else {
-          set_voxel(x, y, z, VoxelType::STONE);
+          set_voxel(x, y, z, VoxelType::WATER);
         }
       }
     }
@@ -319,7 +329,7 @@ void Chunk::create_mesh() {
               // NOTE: front faces the player, back faces away (d'oh)
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (z == 0) {
-                if (!(u_chunk->is_air_voxel(x, y, CHUNK_DEPTH - 1))) {
+                if (!(f_chunk->is_air_voxel(x, y, CHUNK_DEPTH - 1))) {
                   continue;
                 }
                 construct_face(BlockFaces::FRONT, tex_atlas_index, x, y, z);
@@ -333,7 +343,7 @@ void Chunk::create_mesh() {
             case BlockFaces::BACK: {
               int tex_atlas_index = tex_atlas_map[(BlockFaces)face];
               if (z == CHUNK_DEPTH - 1) {
-                if (!(d_chunk->is_air_voxel(x, y, 0))) {
+                if (!(b_chunk->is_air_voxel(x, y, 0))) {
                   continue;
                 }
                 construct_face(BlockFaces::BACK, tex_atlas_index, x, y, z);

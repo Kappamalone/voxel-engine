@@ -8,8 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
-static constexpr int CHUNK_WIDTH = 16;
-static constexpr int CHUNK_DEPTH = 16;
+static constexpr int CHUNK_WIDTH = 32;
+static constexpr int CHUNK_DEPTH = 32;
 static constexpr int CHUNK_HEIGHT = 256;
 
 enum class VoxelType {
@@ -17,7 +17,9 @@ enum class VoxelType {
   DIRT,
   GRASS,
   STONE,
+  WATER,
 };
+
 enum class BlockFaces {
   BOTTOM = 0,
   TOP,
@@ -26,6 +28,7 @@ enum class BlockFaces {
   BACK,
   FRONT,
 };
+
 enum class TexturePosition {
   BOTTOM_LEFT,
   BOTTOM_RIGHT,
@@ -63,14 +66,15 @@ struct BoundingBox {
 // NOTE: uses LH coordinate system for storage of local voxel positions
 class Chunk {
 private:
-  Chunk* u_chunk;
-  Chunk* d_chunk;
+  Chunk* f_chunk;
+  Chunk* b_chunk;
   Chunk* l_chunk;
   Chunk* r_chunk;
   siv::PerlinNoise& perlin_noise;
 
   std::vector<Voxel> voxels;
   std::vector<float> vertices_buffer;
+  std::vector<float> water_vertices_buffer;
   BoundingBox bounding_box;
 
   ChunkPos chunk_pos;
@@ -85,11 +89,6 @@ private:
 
   Voxel& get_voxel(int x, int y, int z) {
     return voxels[x + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH];
-  }
-
-  void set_voxel(int x, int y, int z, VoxelType voxel_type) {
-    voxels[x + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH] =
-        Voxel{.voxel_type = voxel_type};
   }
 
   bool is_air_voxel(int x, int y, int z) {
@@ -110,8 +109,17 @@ public:
   void set_neighbour_chunks(Chunk* u_chunk, Chunk* d_chunk, Chunk* l_chunk,
                             Chunk* r_chunk);
 
+  void set_voxel(int x, int y, int z, VoxelType voxel_type) {
+    voxels[x + z * CHUNK_WIDTH + y * CHUNK_WIDTH * CHUNK_DEPTH] =
+        Voxel{.voxel_type = voxel_type};
+  }
+
   const float* get_vertices_data() const {
     return vertices_buffer.data();
+  }
+
+  const float* get_water_vertices_data() const {
+    return water_vertices_buffer.data();
   }
 
   const BoundingBox& get_bounding_box() const {
@@ -120,6 +128,10 @@ public:
 
   int get_vertices_byte_size() const {
     return vertices_buffer.size() * sizeof(float);
+  }
+
+  int get_water_vertices_byte_size() const {
+    return water_vertices_buffer.size() * sizeof(float);
   }
 
   bool initial_mesh_created() const {
@@ -156,6 +168,16 @@ private:
         {BlockFaces::RIGHT, 1},
         {BlockFaces::FRONT, 1},
         {BlockFaces::BACK, 1},
+        }
+      },
+      {VoxelType::WATER,
+      {
+        {BlockFaces::BOTTOM, 192 + 13},
+        {BlockFaces::TOP, 192 + 13},
+        {BlockFaces::LEFT, 192 + 13},
+        {BlockFaces::RIGHT, 192 + 13},
+        {BlockFaces::FRONT, 192 + 13},
+        {BlockFaces::BACK, 192 + 13},
         }
       },
       {VoxelType::DIRT,
