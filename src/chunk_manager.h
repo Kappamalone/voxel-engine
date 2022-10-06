@@ -39,33 +39,33 @@ private:
   std::unordered_map<ChunkPos, Chunk> world_chunks;
   std::vector<ChunkDrawData> visible_list;
   std::vector<ChunkDrawData> render_list;
+  std::vector<WorldStructure> structures_to_be_generated;
 
   std::thread mesh_gen_thread;
   std::deque<Chunk*> mesh_gen_queue;
 
   void manage_chunks(glm::vec3 pos);
 
-  int view_distance = 5;
+  int view_distance = 12;
 
   static uint32_t random_seed();
 
   // used to place structures on top of terrain (trees)
-  void place_block(int x, int y, int z, VoxelType voxel_type) {
-    ChunkPos world_chunk_pos;
-    if (x >= 0) {
-      world_chunk_pos.x = (int)(x / CHUNK_WIDTH);
-    } else {
-      world_chunk_pos.x = floor(x / CHUNK_WIDTH);
-    }
+  void place_block_within_chunk(ChunkPos world_chunk_pos, int x, int y, int z,
+                                VoxelType voxel_type) {
+    world_chunks.at(world_chunk_pos).set_voxel(x, y, z, voxel_type);
+  }
 
-    if (z >= 0) {
-      world_chunk_pos.z = ceil(z / CHUNK_DEPTH);
-    } else {
-      world_chunk_pos.z = (int)(z / CHUNK_DEPTH);
+  void place_structure_within_chunk(ChunkPos world_chunk_pos, int x, int y,
+                                    int z, StructureType structure_type) {
+    switch (structure_type) {
+      case StructureType::TREE:
+        for (int i = 0; i < 6; i++) {
+          place_block_within_chunk(world_chunk_pos, x, y + i, z,
+                                   VoxelType::WOOD);
+        }
+        break;
     }
-
-    world_chunks.at(world_chunk_pos)
-        .set_voxel(x % CHUNK_WIDTH, y, z % CHUNK_DEPTH, voxel_type);
   }
 
 public:

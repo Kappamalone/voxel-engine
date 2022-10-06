@@ -73,6 +73,7 @@ ChunkManager::ChunkManager(PlayerCamera& player_camera)
 void ChunkManager::manage_chunks(glm::vec3 pos) {
   visible_list.clear();
   render_list.clear();
+  structures_to_be_generated.clear();
   cpu_bytes_allocated = 0;
   ChunkPos world_chunk_pos;
 
@@ -100,11 +101,22 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
           ChunkPos{.x = world_chunk_pos.x + dx, .z = world_chunk_pos.z + dz};
 
       if (world_chunks.find(w) == world_chunks.end()) {
-        world_chunks.insert({w, Chunk(w, perlin_noise)});
+        auto chunk = Chunk(w, perlin_noise);
+        world_chunks.insert({w, chunk});
       }
     }
   }
-  place_block(0, 200, 32, VoxelType::DIRT);
+
+  /*
+  // TODO: add to vector for each frame
+  for (const auto& structure : structures_to_be_generated) {
+    switch (structure.structure_type) {
+      case StructureType::TREE:
+        break;
+    }
+  }
+  */
+
   double after = glfwGetTime();
   if ((after - before) * 1000 > 5) {
     PRINT("Voxel Creation: {}\n", (after - before) * 1000);
@@ -119,6 +131,11 @@ void ChunkManager::manage_chunks(glm::vec3 pos) {
 
       auto& chunk = world_chunks.at(w);
       if (!chunk.initial_mesh_created() && !chunk.has_mesh_requested()) {
+        for (const auto& structure : chunk.get_structures()) {
+          place_structure_within_chunk(w, structure.x, structure.y, structure.z,
+                                       structure.structure_type);
+        }
+
         auto& f_chunk = world_chunks.at(ChunkPos{.x = w.x, .z = w.z + 1});
         auto& b_chunk = world_chunks.at(ChunkPos{.x = w.x, .z = w.z - 1});
         auto& l_chunk = world_chunks.at(ChunkPos{.x = w.x - 1, .z = w.z});

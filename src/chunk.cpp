@@ -12,6 +12,7 @@ Chunk::Chunk(ChunkPos chunk_pos, siv::PerlinNoise& perlin_noise)
       .min = glm::vec3(get_x_offset(), 0, get_z_offset()),
       .max = glm::vec3(get_x_offset(), CHUNK_HEIGHT, get_z_offset())};
 }
+
 void Chunk::set_neighbour_chunks(Chunk* u_chunk, Chunk* d_chunk, Chunk* l_chunk,
                                  Chunk* r_chunk) {
   this->f_chunk = u_chunk;
@@ -25,6 +26,9 @@ void Chunk::set_neighbour_chunks(Chunk* u_chunk, Chunk* d_chunk, Chunk* l_chunk,
 // (mark local x y, and world y coord)
 void Chunk::create_voxels() {
   voxels.resize(CHUNK_WIDTH * CHUNK_DEPTH * CHUNK_HEIGHT);
+  std::uniform_real_distribution<double> unif(0, 1);
+  std::random_device rand_dev;
+  std::mt19937 rand_engine(rand_dev());
 
   LerpPoints lerp_points(Point(-1.0f, 60), Point(1.0f, 120));
   lerp_points.add_point(Point(0.0, 90));
@@ -60,6 +64,9 @@ void Chunk::create_voxels() {
             set_voxel(x, y, z, VoxelType::DIRT);
           } else if (y >= height - 1) {
             set_voxel(x, y, z, VoxelType::GRASS);
+            if (unif(rand_engine) > 0.99) {
+              structures.emplace_back(x, y + 1, z, StructureType::TREE);
+            }
           } else if (y >= height - 5) {
             set_voxel(x, y, z, VoxelType::DIRT);
           } else {

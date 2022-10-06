@@ -8,8 +8,8 @@
 #include <unordered_map>
 #include <vector>
 
-static constexpr int CHUNK_WIDTH = 32;
-static constexpr int CHUNK_DEPTH = 32;
+static constexpr int CHUNK_WIDTH = 16;
+static constexpr int CHUNK_DEPTH = 16;
 static constexpr int CHUNK_HEIGHT = 256;
 
 enum class VoxelType {
@@ -18,6 +18,23 @@ enum class VoxelType {
   GRASS,
   STONE,
   WATER,
+  WOOD,
+  LEAF,
+};
+
+enum class StructureType {
+  TREE,
+};
+
+// in world coords
+struct WorldStructure {
+  int x;
+  int y;
+  int z;
+  StructureType structure_type;
+  WorldStructure(int x, int y, int z, StructureType structure_type)
+      : x(x), y(y), z(z), structure_type(structure_type) {
+  }
 };
 
 enum class BlockFaces {
@@ -75,6 +92,7 @@ private:
   std::vector<Voxel> voxels;
   std::vector<float> vertices_buffer;
   std::vector<float> water_vertices_buffer;
+  std::vector<WorldStructure> structures;
   BoundingBox bounding_box;
 
   ChunkPos chunk_pos;
@@ -134,6 +152,10 @@ public:
     return water_vertices_buffer.size() * sizeof(float);
   }
 
+  const std::vector<WorldStructure>& get_structures() const {
+    return structures;
+  }
+
   bool initial_mesh_created() const {
     return mesh_created;
   }
@@ -178,6 +200,16 @@ private:
         {BlockFaces::RIGHT, 192 + 13},
         {BlockFaces::FRONT, 192 + 13},
         {BlockFaces::BACK, 192 + 13},
+        }
+      },
+      {VoxelType::WOOD,
+      {
+        {BlockFaces::BOTTOM, 20},
+        {BlockFaces::TOP, 20},
+        {BlockFaces::LEFT, 20},
+        {BlockFaces::RIGHT, 20},
+        {BlockFaces::FRONT, 20},
+        {BlockFaces::BACK, 20},
         }
       },
       {VoxelType::DIRT,
